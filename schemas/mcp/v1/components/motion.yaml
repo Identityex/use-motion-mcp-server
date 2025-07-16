@@ -1,0 +1,159 @@
+MCPToolResponse:
+  type: object
+  required:
+    - content
+  properties:
+    content:
+      type: array
+      items:
+        type: object
+        properties:
+          type:
+            type: string
+            enum: [text]
+          text:
+            type: string
+    isError:
+      type: boolean
+      default: false
+
+Priority:
+  type: string
+  enum: [LOW, MEDIUM, HIGH, URGENT]
+
+Status:
+  type: string
+  enum: [TODO, IN_PROGRESS, COMPLETED, CANCELLED]
+
+ListProjectsRequest:
+  type: object
+  properties:
+    workspaceId:
+      type: string
+      description: Motion workspace ID to filter projects
+    limit:
+      type: integer
+      minimum: 1
+      maximum: 100
+      default: 50
+      description: Maximum number of projects to return
+    cursor:
+      type: string
+      description: Pagination cursor for retrieving next page
+
+CreateProjectRequest:
+  type: object
+  required:
+    - name
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 255
+      description: Project name
+    description:
+      type: string
+      maxLength: 1000
+      description: Project description
+    workspaceId:
+      type: string
+      description: Motion workspace ID
+    enrich:
+      type: boolean
+      default: false
+      description: Use AI to enhance project description
+
+ListTasksRequest:
+  type: object
+  properties:
+    projectId:
+      type: string
+      description: Filter tasks by project ID
+    workspaceId:
+      type: string
+      description: Filter tasks by workspace ID
+    status:
+      $ref: '#/Status'
+      description: Filter tasks by status
+    assigneeId:
+      type: string
+      description: Filter tasks by assignee ID
+    limit:
+      type: integer
+      minimum: 1
+      maximum: 100
+      default: 50
+      description: Maximum number of tasks to return
+    cursor:
+      type: string
+      description: Pagination cursor for retrieving next page
+
+CreateTaskRequest:
+  type: object
+  required:
+    - name
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 255
+      description: Task name
+    description:
+      type: string
+      maxLength: 2000
+      description: Task description
+    priority:
+      $ref: '#/Priority'
+      description: Task priority level
+    projectId:
+      type: string
+      description: Project ID to assign task to
+    workspaceId:
+      type: string
+      description: Workspace ID
+    assigneeId:
+      type: string
+      description: User ID to assign task to
+    dueDate:
+      type: string
+      format: date-time
+      description: Task due date
+    enrich:
+      type: boolean
+      default: false
+      description: Use AI to enhance task description
+
+UpdateTaskRequest:
+  type: object
+  required:
+    - taskId
+  properties:
+    taskId:
+      type: string
+      description: ID of task to update
+    name:
+      type: string
+      minLength: 1
+      maxLength: 255
+      description: Updated task name
+    description:
+      type: string
+      maxLength: 2000
+      description: Updated task description
+    status:
+      $ref: '#/Status'
+      description: Updated task status
+    priority:
+      $ref: '#/Priority'
+      description: Updated task priority
+    assigneeId:
+      type: string
+      description: Updated assignee ID
+    dueDate:
+      type: string
+      format: date-time
+      description: Updated due date
+    enrich:
+      type: boolean
+      default: false
+      description: Use AI to enhance updated description

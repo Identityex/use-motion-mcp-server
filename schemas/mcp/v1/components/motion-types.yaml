@@ -1,0 +1,229 @@
+# Motion API Types
+# Core Motion platform data structures
+
+MotionProject:
+  type: object
+  required:
+    - id
+    - name
+    - workspaceId
+    - status
+    - priority
+    - createdTime
+    - updatedTime
+  properties:
+    id:
+      type: string
+      description: "Project ID"
+    name:
+      type: string
+      description: "Project name"
+    description:
+      type: string
+      description: "Project description"
+    workspaceId:
+      type: string
+      description: "Workspace ID"
+    status:
+      $ref: '#/MotionStatus'
+    priority:
+      $ref: './common.yaml#/Priority'
+    labels:
+      type: array
+      items:
+        type: string
+      description: "Project labels"
+    createdTime:
+      $ref: './common.yaml#/Timestamp'
+    updatedTime:
+      $ref: './common.yaml#/Timestamp'
+  additionalProperties: false
+
+MotionTask:
+  type: object
+  required:
+    - id
+    - name
+    - priority
+    - status
+    - workspaceId
+    - createdTime
+    - updatedTime
+    - completed
+  properties:
+    id:
+      $ref: './common.yaml#/TaskID'
+    name:
+      type: string
+      description: "Task name"
+    description:
+      type: string
+      description: "Task description"
+    priority:
+      $ref: './common.yaml#/Priority'
+    status:
+      $ref: '#/MotionStatus'
+    assigneeId:
+      $ref: './common.yaml#/UserID'
+    projectId:
+      type: string
+      description: "Project ID"
+    workspaceId:
+      type: string
+      description: "Workspace ID"
+    parentRecurringTaskId:
+      type: string
+      description: "Parent recurring task ID"
+    createdTime:
+      $ref: './common.yaml#/Timestamp'
+    updatedTime:
+      $ref: './common.yaml#/Timestamp'
+    scheduledStart:
+      $ref: './common.yaml#/Timestamp'
+    scheduledEnd:
+      $ref: './common.yaml#/Timestamp'
+    deadline:
+      $ref: './common.yaml#/Timestamp'
+    deadlineType:
+      type: string
+      enum: [SOFT, HARD]
+      description: "Deadline enforcement type"
+    duration:
+      type: integer
+      minimum: 0
+      description: "Duration in minutes"
+    autoScheduled:
+      $ref: '#/AutoScheduledConfig'
+    completed:
+      type: boolean
+      description: "Whether task is completed"
+    labels:
+      type: array
+      items:
+        type: string
+      description: "Task labels"
+    chunks:
+      type: array
+      items:
+        $ref: '#/TimeChunk'
+      description: "Scheduled time chunks"
+  additionalProperties: false
+
+AutoScheduledConfig:
+  type: object
+  properties:
+    startDate:
+      $ref: './common.yaml#/Timestamp'
+    deadlineType:
+      type: string
+      enum: [SOFT, HARD]
+    schedule:
+      type: string
+      enum: [Work_Hours, All_Day]
+  additionalProperties: false
+
+TimeChunk:
+  type: object
+  required:
+    - startTime
+    - endTime
+  properties:
+    startTime:
+      $ref: './common.yaml#/Timestamp'
+    endTime:
+      $ref: './common.yaml#/Timestamp'
+  additionalProperties: false
+
+MotionStatus:
+  type: object
+  required:
+    - name
+    - isDefaultStatus
+    - isResolvedStatus
+  properties:
+    name:
+      type: string
+      description: "Status name"
+    isDefaultStatus:
+      type: boolean
+      description: "Whether this is the default status"
+    isResolvedStatus:
+      type: boolean
+      description: "Whether this status indicates resolution"
+  additionalProperties: false
+
+MotionWorkspace:
+  type: object
+  required:
+    - id
+    - name
+    - type
+    - statuses
+  properties:
+    id:
+      $ref: './common.yaml#/WorkspaceID'
+    name:
+      type: string
+      description: "Workspace name"
+    teamId:
+      type: string
+      description: "Team ID (for team workspaces)"
+    type:
+      type: string
+      enum: [PERSONAL, TEAM]
+      description: "Workspace type"
+    statuses:
+      type: array
+      items:
+        $ref: '#/MotionStatus'
+      description: "Available statuses in workspace"
+  additionalProperties: false
+
+MotionUser:
+  type: object
+  required:
+    - id
+    - name
+    - email
+  properties:
+    id:
+      $ref: './common.yaml#/UserID'
+    name:
+      type: string
+      description: "User display name"
+    email:
+      type: string
+      format: email
+      description: "User email address"
+    workspaceId:
+      type: string
+      description: "Workspace ID"
+  additionalProperties: false
+
+MotionComment:
+  type: object
+  required:
+    - id
+    - content
+    - createdTime
+    - updatedTime
+    - authorId
+  properties:
+    id:
+      type: string
+      description: "Comment ID"
+    content:
+      type: string
+      description: "Comment content"
+    createdTime:
+      $ref: './common.yaml#/Timestamp'
+    updatedTime:
+      $ref: './common.yaml#/Timestamp'
+    authorId:
+      $ref: './common.yaml#/UserID'
+    taskId:
+      $ref: './common.yaml#/TaskID'
+    projectId:
+      type: string
+      description: "Project ID"
+  additionalProperties: false

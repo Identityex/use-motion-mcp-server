@@ -1,0 +1,10 @@
+# OpenAPI Generator Ignore
+# Files to exclude from generation
+
+# Manual implementations
+route-implementations.ts
+index.ts
+
+# Custom extensions
+*.custom.ts
+*-custom.ts

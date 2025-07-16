@@ -1,0 +1,46 @@
+# Development Dockerfile for Motion MCP Server
+FROM node:18-alpine
+
+# Install development tools
+RUN apk add --no-cache \
+    git \
+    python3 \
+    make \
+    g++ \
+    dumb-init
+
+# Create non-root user
+RUN addgroup -g 1001 -S motion && \
+    adduser -S motion -u 1001
+
+# Set working directory
+WORKDIR /app
+
+# Create data directory
+RUN mkdir -p /app/.claude/motion && \
+    chown -R motion:motion /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies (including dev)
+RUN npm ci
+
+# Change ownership of the app directory
+RUN chown -R motion:motion /app
+
+# Switch to non-root user
+USER motion
+
+# Set environment variables
+ENV NODE_ENV=development
+ENV CLAUDE_DATA_DIR=/app/.claude/motion
+
+# Expose port for development
+EXPOSE 3000
+
+# Use dumb-init for proper signal handling
+ENTRYPOINT ["dumb-init", "--"]
+
+# Default command (can be overridden)
+CMD ["npm", "run", "dev"]

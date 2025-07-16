@@ -1,0 +1,35 @@
+// Generated MCP Route: {{controllerName}}Routes
+// This file is auto-generated. Do not edit manually.
+
+{{#imports}}
+import { {{.}} } from '../models';
+{{/imports}}
+import { MCPToolHandler } from '../../v1-controllers/types';
+
+/**
+ * {{controllerName}}Routes - MCP Route Interface
+ */
+export interface {{controllerName}}Routes {
+{{#operations}}
+  /**
+   * {{summary}}
+   {{#description}}
+   * {{description}}
+   {{/description}}
+   */
+  {{operationId}}: MCPToolHandler<{
+{{#parameters}}
+    {{name}}{{^required}}?{{/required}}: {{type}};
+{{/parameters}}
+  }>;
+{{/operations}}
+}
+
+/**
+ * MCP tool names for {{controllerName}}
+ */
+export const {{controllerName}}ToolNames = {
+{{#operations}}
+  {{operationId}}: '{{name}}',
+{{/operations}}
+} as const;

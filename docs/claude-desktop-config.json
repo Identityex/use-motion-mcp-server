@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "motion": {
+      "command": "node",
+      "args": ["/absolute/path/to/motion-mcp-server/dist/server/index.js"],
+      "env": {
+        "MOTION_API_KEY": "your-motion-api-key-here",
+        "MOTION_IS_TEAM_ACCOUNT": "false",
+        "CLAUDE_DATA_DIR": ".claude/motion",
+        "LOG_LEVEL": "info"
+      }
+    }
+  }
+}

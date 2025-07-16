@@ -1,0 +1,168 @@
+# Common Types and Schemas
+# Shared across all MCP tool definitions
+
+# Base MCP Response Structure
+MCPToolResponse:
+  type: object
+  required:
+    - content
+  properties:
+    content:
+      type: array
+      items:
+        $ref: '#/MCPContent'
+    isError:
+      type: boolean
+      default: false
+  additionalProperties: false
+
+MCPContent:
+  type: object
+  required:
+    - type
+    - text
+  properties:
+    type:
+      type: string
+      enum: [text]
+    text:
+      type: string
+  additionalProperties: false
+
+# Service Result Pattern
+ServiceResult:
+  type: object
+  required:
+    - success
+  properties:
+    success:
+      type: boolean
+    data:
+      type: object
+      description: "Result data when success is true"
+    error:
+      type: string
+      description: "Error message when success is false"
+    metadata:
+      type: object
+      additionalProperties: true
+      description: "Additional metadata"
+  additionalProperties: false
+
+# Validation Error Types
+ValidationError:
+  type: object
+  required:
+    - field
+    - message
+  properties:
+    field:
+      type: string
+      description: "Field that failed validation"
+    message:
+      type: string
+      description: "Validation error message"
+    value:
+      description: "Invalid value that was provided"
+  additionalProperties: false
+
+ValidationErrorResponse:
+  allOf:
+    - $ref: '#/MCPToolResponse'
+    - type: object
+      properties:
+        content:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum: [text]
+              text:
+                type: string
+                pattern: "^Validation failed:"
+        isError:
+          type: boolean
+          enum: [true]
+
+# Pagination Types
+PaginationRequest:
+  type: object
+  properties:
+    limit:
+      type: integer
+      minimum: 1
+      maximum: 100
+      default: 50
+      description: "Maximum number of items to return"
+    cursor:
+      type: string
+      description: "Pagination cursor for next page"
+  additionalProperties: false
+
+PaginationResponse:
+  type: object
+  required:
+    - total
+    - hasMore
+  properties:
+    total:
+      type: integer
+      minimum: 0
+      description: "Total number of items"
+    hasMore:
+      type: boolean
+      description: "Whether more items are available"
+    nextCursor:
+      type: string
+      description: "Cursor for next page (if hasMore is true)"
+  additionalProperties: false
+
+# Common Enums
+Priority:
+  type: string
+  enum: [LOW, MEDIUM, HIGH, URGENT]
+  description: "Priority level"
+
+TaskStatus:
+  type: string
+  enum: [Planned, "In Progress", Completed, Canceled]
+  description: "Task status"
+
+ConflictResolution:
+  type: string
+  enum: [local, remote, newest, prompt]
+  description: "How to resolve sync conflicts"
+
+ExportFormat:
+  type: string
+  enum: [json, markdown, zip]
+  description: "Export/import format"
+
+# Timestamps
+Timestamp:
+  type: string
+  format: date-time
+  description: "ISO 8601 timestamp"
+
+# ID Types
+ProjectID:
+  type: string
+  pattern: "^[a-zA-Z0-9_-]+$"
+  description: "Project identifier"
+
+TaskID:
+  type: string
+  pattern: "^[a-zA-Z0-9_-]+$"
+  description: "Task identifier"
+
+WorkspaceID:
+  type: string
+  pattern: "^[a-zA-Z0-9_-]+$"
+  description: "Workspace identifier"
+
+UserID:
+  type: string
+  pattern: "^[a-zA-Z0-9_-]+$"
+  description: "User identifier"

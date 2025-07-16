@@ -1,0 +1,22 @@
+openapi: 3.0.3
+info:
+  title: Motion MCP Server API
+  description: Model Context Protocol API for Motion task management integration
+  version: 1.0.0
+
+servers:
+  - url: mcp://motion/v1
+    description: Model Context Protocol server
+
+components:
+  securitySchemes:
+    mcpAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: MCP authentication token
+
+security:
+  - mcpAuth: []
+
+paths: {}  # Paths will be imported from domain files

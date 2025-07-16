@@ -1,0 +1,80 @@
+// Controller Types for MCP Tool Handlers
+// Pure functional interfaces for validation and error handling
+
+export interface MCPToolHandler {
+  (deps: ServiceDependencies, args: any): Promise<MCPToolResponse>;
+}
+
+export interface ServiceDependencies {
+  readonly motionService: MotionService;
+  readonly storageService: StorageService;
+  readonly aiService: AIService;
+}
+
+export interface ValidationConfig {
+  readonly required?: string[];
+  readonly enums?: Record<string, string[]>;
+}
+
+export interface MCPToolResponse {
+  readonly content: Array<{
+    readonly type: 'text';
+    readonly text: string;
+  }>;
+  readonly isError?: boolean;
+}
+
+// Validation wrapper
+export const withValidation = (
+  handler: MCPToolHandler,
+  config: ValidationConfig
+): MCPToolHandler => {
+  return async (deps, args) => {
+    // Validate required fields
+    if (config.required) {
+      for (const field of config.required) {
+        if (!args || args[field] === undefined || args[field] === null) {
+          throw new Error(`Required field '${field}' is missing`);
+        }
+      }
+    }
+
+    // Validate enums
+    if (config.enums) {
+      for (const [field, allowedValues] of Object.entries(config.enums)) {
+        if (args[field] && !allowedValues.includes(args[field])) {
+          throw new Error(`Invalid value for '${field}'. Allowed values: ${allowedValues.join(', ')}`);
+        }
+      }
+    }
+
+    return handler(deps, args);
+  };
+};
+
+// Error handling wrapper
+export const withErrorHandling = async <T>(
+  operation: () => Promise<T>,
+  operationName: string
+): Promise<MCPToolResponse> => {
+  try {
+    const result = await operation();
+    
+    // Convert result to MCP response format
+    return {
+      content: [{
+        type: 'text',
+        text: typeof result === 'string' ? result : JSON.stringify(result, null, 2)
+      }],
+      isError: false
+    };
+  } catch (error) {
+    return {
+      content: [{
+        type: 'text',
+        text: `Error in ${operationName}: ${error instanceof Error ? error.message : String(error)}`
+      }],
+      isError: true
+    };
+  }
+};

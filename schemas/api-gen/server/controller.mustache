@@ -1,0 +1,59 @@
+// {{classname}} - Generated MCP Controller
+// Pure functions for handling {{description}}
+
+import { MCPToolHandler, withErrorHandling, withValidation } from '../controller-types';
+{{#imports}}
+import { {{classname}} } from '{{filename}}';
+{{/imports}}
+
+{{#operations}}
+{{#operation}}
+// {{summary}}
+const {{operationIdCamelCase}}: MCPToolHandler = withValidation(
+  async (deps, args) => {
+    return withErrorHandling(async () => {
+      const result = await {{#x-mcp-tool}}{{&action}}{{/x-mcp-tool}}(deps, args as any);
+      return result;
+    }, '{{summary}}');
+  },
+  {
+    {{#x-mcp-tool}}
+    {{#validation}}
+    {{#required}}
+    required: [{{#.}}'{{.}}'{{#hasMore}}, {{/hasMore}}{{/.}}],
+    {{/required}}
+    {{#optional}}
+    // Optional fields: {{#.}}{{.}}{{#hasMore}}, {{/hasMore}}{{/.}}
+    {{/optional}}
+    {{#enums}}
+    enums: {
+      {{#.}}
+      {{name}}: [{{#values}}'{{.}}'{{#hasMore}}, {{/hasMore}}{{/values}}],
+      {{/.}}
+    },
+    {{/enums}}
+    {{/validation}}
+    {{/x-mcp-tool}}
+  }
+);
+
+{{/operation}}
+{{/operations}}
+
+// {{classname}} interface
+export interface {{classname}} {
+{{#operations}}
+{{#operation}}
+  readonly {{operationIdCamelCase}}: MCPToolHandler;
+{{/operation}}
+{{/operations}}
+}
+
+// Export the controller as a frozen object (immutable)
+export const {{classFilename}}: {{classname}} = Object.freeze({
+{{#operations}}
+{{#operation}}
+  {{operationIdCamelCase}}{{#hasMore}},{{/hasMore}}
+{{/operation}}
+{{/operations}}
+});

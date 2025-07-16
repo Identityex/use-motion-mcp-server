@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  motion-mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: motion-mcp-server
+    restart: unless-stopped
+    
+    environment:
+      - NODE_ENV=production
+      - MOTION_API_KEY=${MOTION_API_KEY}
+      - MOTION_IS_TEAM_ACCOUNT=${MOTION_IS_TEAM_ACCOUNT:-false}
+      - MOTION_BASE_URL=${MOTION_BASE_URL:-https://api.usemotion.com/v1}
+      - MCP_SERVER_NAME=${MCP_SERVER_NAME:-motion}
+      - CLAUDE_DATA_DIR=/app/.claude/motion
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - REQUEST_TIMEOUT=${REQUEST_TIMEOUT:-30000}
+    
+    volumes:
+      # Persist local data
+      - motion_data:/app/.claude/motion
+      
+    # Optional: expose port for health checks or debugging
+    # ports:
+    #   - "3000:3000"
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "node", "-e", "console.log('Health check passed')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  motion_data:
+    driver: local

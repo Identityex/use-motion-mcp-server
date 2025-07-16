@@ -1,0 +1,60 @@
+# AI Feature Types
+# Request and response schemas for AI-powered operations
+
+EnrichTaskRequest:
+  type: object
+  required:
+    - taskName
+  properties:
+    taskName:
+      type: string
+      minLength: 1
+      maxLength: 255
+      description: "Task name to enrich"
+    description:
+      type: string
+      maxLength: 2000
+      description: "Optional existing description"
+    projectId:
+      type: string
+      description: "Optional project ID for context"
+  additionalProperties: false
+
+EnrichTaskResponse:
+  allOf:
+    - $ref: './common.yaml#/MCPToolResponse'
+
+BatchCreateTasksRequest:
+  type: object
+  required:
+    - goal
+  properties:
+    goal:
+      type: string
+      minLength: 1
+      maxLength: 500
+      description: "Goal or objective to break down"
+    context:
+      type: string
+      maxLength: 1000
+      description: "Additional context for better task generation"
+    projectId:
+      type: string
+      description: "Project ID"
+    workspaceId:
+      $ref: './common.yaml#/WorkspaceID'
+    maxTasks:
+      type: integer
+      minimum: 1
+      maximum: 20
+      default: 10
+      description: "Maximum number of tasks to create"
+    priority:
+      $ref: './common.yaml#/Priority'
+      default: MEDIUM
+      description: "Default priority for generated tasks"
+  additionalProperties: false
+
+BatchCreateTasksResponse:
+  allOf:
+    - $ref: './common.yaml#/MCPToolResponse'
