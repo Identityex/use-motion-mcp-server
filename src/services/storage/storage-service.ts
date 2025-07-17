@@ -6,10 +6,10 @@ import * as path from 'path';
 import matter from 'gray-matter';
 import { 
   MotionProject, 
-  MotionTask, 
-  ProjectID, 
-  TaskID 
+  MotionTask
 } from '../../api/mcp/v1-routes/models';
+import { motionStatusToString, mapTaskForMCP } from '../utils/type-mappers';
+import { validateProjectId, validateTaskId, validateFileName } from '../validation/validators';
 
 export interface StorageConfig {
   readonly baseDir: string;
@@ -36,20 +36,31 @@ export interface ProjectMeta {
 }
 
 export class StorageService {
-  constructor(private readonly config: StorageConfig) {
-    // Ensure base directory exists
-    fs.ensureDirSync(this.config.baseDir);
+  private initialized = false;
+
+  constructor(private readonly config: StorageConfig) {}
+
+  private async ensureInitialized(): Promise<void> {
+    if (!this.initialized) {
+      await fs.ensureDir(this.config.baseDir);
+      this.initialized = true;
+    }
   }
 
   // Project operations
   async bindProject(project: MotionProject): Promise<void> {
-    const projectDir = this.getProjectDir(project.id);
+    await this.ensureInitialized();
+    
+    // Validate project ID to prevent path traversal
+    const validatedId = validateProjectId(project.id);
+    
+    const projectDir = this.getProjectDir(validatedId);
     await fs.ensureDir(projectDir);
     await fs.ensureDir(path.join(projectDir, 'tasks'));
     await fs.ensureDir(path.join(projectDir, 'docs'));
 
     const meta: ProjectMeta = {
-      id: project.id,
+      id: validatedId,
       name: project.name,
       description: project.description,
       workspaceId: project.workspaceId,
@@ -60,12 +71,14 @@ export class StorageService {
   }
 
   async unbindProject(projectId: string): Promise<void> {
-    const projectDir = this.getProjectDir(projectId);
+    const validatedId = validateProjectId(projectId);
+    const projectDir = this.getProjectDir(validatedId);
     await fs.remove(projectDir);
   }
 
   async getProjectMeta(projectId: string): Promise<ProjectMeta | null> {
-    const metaPath = path.join(this.getProjectDir(projectId), 'meta.json');
+    const validatedId = validateProjectId(projectId);
+    const metaPath = path.join(this.getProjectDir(validatedId), 'meta.json');
     if (await fs.pathExists(metaPath)) {
       return fs.readJson(metaPath);
     }
@@ -73,17 +86,20 @@ export class StorageService {
   }
 
   async updateProjectMeta(projectId: string, updates: Partial<ProjectMeta>): Promise<void> {
-    const meta = await this.getProjectMeta(projectId);
+    const validatedId = validateProjectId(projectId);
+    const meta = await this.getProjectMeta(validatedId);
     if (!meta) {
-      throw new Error(`Project ${projectId} not bound`);
+      throw new Error(`Project not found`);
     }
     
     const updated = { ...meta, ...updates };
-    const metaPath = path.join(this.getProjectDir(projectId), 'meta.json');
+    const metaPath = path.join(this.getProjectDir(validatedId), 'meta.json');
     await fs.writeJson(metaPath, updated, { spaces: 2 });
   }
 
   async listBoundProjects(): Promise<ProjectMeta[]> {
+    await this.ensureInitialized();
+    
     const dirs = await fs.readdir(this.config.baseDir);
     const projects: ProjectMeta[] = [];
 
@@ -100,13 +116,17 @@ export class StorageService {
 
   // Task operations
   async saveTask(projectId: string, task: MotionTask): Promise<void> {
-    const taskPath = this.getTaskPath(projectId, task.id);
+    const validatedProjectId = validateProjectId(projectId);
+    const validatedTaskId = validateTaskId(task.id);
+    const taskPath = this.getTaskPath(validatedProjectId, validatedTaskId);
     const taskFile = this.taskToMarkdown(task);
     await fs.writeFile(taskPath, taskFile);
   }
 
   async getTask(projectId: string, taskId: string): Promise<TaskFile | null> {
-    const taskPath = this.getTaskPath(projectId, taskId);
+    const validatedProjectId = validateProjectId(projectId);
+    const validatedTaskId = validateTaskId(taskId);
+    const taskPath = this.getTaskPath(validatedProjectId, validatedTaskId);
     if (!await fs.pathExists(taskPath)) {
       return null;
     }
@@ -121,7 +141,8 @@ export class StorageService {
   }
 
   async listTasks(projectId: string): Promise<TaskFile[]> {
-    const tasksDir = path.join(this.getProjectDir(projectId), 'tasks');
+    const validatedId = validateProjectId(projectId);
+    const tasksDir = path.join(this.getProjectDir(validatedId), 'tasks');
     if (!await fs.pathExists(tasksDir)) {
       return [];
     }
@@ -143,11 +164,13 @@ export class StorageService {
   }
 
   async deleteTask(projectId: string, taskId: string): Promise<void> {
-    const taskPath = this.getTaskPath(projectId, taskId);
+    const validatedProjectId = validateProjectId(projectId);
+    const validatedTaskId = validateTaskId(taskId);
+    const taskPath = this.getTaskPath(validatedProjectId, validatedTaskId);
     await fs.remove(taskPath);
   }
 
-  async searchTasks(query: string): Promise<Array<{ projectId: string; task: TaskFile }>> {
+  async searchTaskFiles(query: string): Promise<Array<{ projectId: string; task: TaskFile }>> {
     const results: Array<{ projectId: string; task: TaskFile }> = [];
     const projects = await this.listBoundProjects();
 
@@ -166,12 +189,16 @@ export class StorageService {
 
   // Document operations
   async saveDocument(projectId: string, filename: string, content: string): Promise<void> {
-    const docPath = path.join(this.getProjectDir(projectId), 'docs', filename);
+    const validatedProjectId = validateProjectId(projectId);
+    const validatedFileName = validateFileName(filename);
+    const docPath = path.join(this.getProjectDir(validatedProjectId), 'docs', validatedFileName);
     await fs.writeFile(docPath, content);
   }
 
   async getDocument(projectId: string, filename: string): Promise<string | null> {
-    const docPath = path.join(this.getProjectDir(projectId), 'docs', filename);
+    const validatedProjectId = validateProjectId(projectId);
+    const validatedFileName = validateFileName(filename);
+    const docPath = path.join(this.getProjectDir(validatedProjectId), 'docs', validatedFileName);
     if (await fs.pathExists(docPath)) {
       return fs.readFile(docPath, 'utf-8');
     }
@@ -179,13 +206,72 @@ export class StorageService {
   }
 
   async listDocuments(projectId: string): Promise<string[]> {
-    const docsDir = path.join(this.getProjectDir(projectId), 'docs');
+    const validatedId = validateProjectId(projectId);
+    const docsDir = path.join(this.getProjectDir(validatedId), 'docs');
     if (!await fs.pathExists(docsDir)) {
       return [];
     }
     
     const files = await fs.readdir(docsDir);
     return files.filter(f => f.endsWith('.md'));
+  }
+
+  // Removed duplicate listBoundProjects - using the one that returns ProjectMeta[]
+
+  async listTasksAsMotionTasks(projectId: string): Promise<MotionTask[]> {
+    const validatedId = validateProjectId(projectId);
+    const taskFiles = await this.listTasks(validatedId);
+    return taskFiles.map(tf => this.taskFileToMotionTask(tf));
+  }
+
+  async searchTasks(params: {
+    query: string;
+    projectId?: string;
+    status?: string;
+  }): Promise<MotionTask[]> {
+    const projectMetas = await this.listBoundProjects();
+    const projectIds = params.projectId 
+      ? [validateProjectId(params.projectId)] 
+      : projectMetas.map(p => p.id);
+    
+    const allTasks: MotionTask[] = [];
+    
+    for (const projectId of projectIds) {
+      const tasks = await this.listTasksAsMotionTasks(projectId);
+      
+      for (const task of tasks) {
+        // Apply filters
+        if (params.status && motionStatusToString(task.status) !== params.status) {
+          continue;
+        }
+        
+        // Search in name and description
+        const searchLower = params.query.toLowerCase();
+        const nameMatch = task.name.toLowerCase().includes(searchLower);
+        const descMatch = task.description?.toLowerCase().includes(searchLower) || false;
+        
+        if (nameMatch || descMatch) {
+          allTasks.push(task);
+        }
+      }
+    }
+    
+    return allTasks;
+  }
+
+  async saveProjectContext(projectId: string, context: string): Promise<void> {
+    const validatedId = validateProjectId(projectId);
+    const contextPath = path.join(this.getProjectDir(validatedId), 'context.md');
+    await fs.writeFile(contextPath, context);
+  }
+
+  async loadProjectContext(projectId: string): Promise<string | null> {
+    const validatedId = validateProjectId(projectId);
+    const contextPath = path.join(this.getProjectDir(validatedId), 'context.md');
+    if (await fs.pathExists(contextPath)) {
+      return fs.readFile(contextPath, 'utf-8');
+    }
+    return null;
   }
 
   // Helper methods
@@ -214,7 +300,7 @@ export class StorageService {
 
     // Add task details
     content.push('## Task Details');
-    content.push(`- **Status**: ${task.status}`);
+    content.push(`- **Status**: ${motionStatusToString(task.status)}`);
     content.push(`- **Priority**: ${task.priority}`);
     if (task.assigneeId) {
       content.push(`- **Assignee**: ${task.assigneeId}`);
@@ -236,4 +322,35 @@ export class StorageService {
 
     return matter.stringify(content.join('\n'), metadata);
   }
+
+  private taskFileToMotionTask(taskFile: TaskFile): MotionTask {
+    const metadata = taskFile.metadata;
+    return {
+      id: metadata.id,
+      name: metadata.name,
+      description: metadata.description,
+      priority: metadata.priority,
+      status: metadata.status,
+      assigneeId: metadata.assigneeId,
+      projectId: metadata.projectId,
+      workspaceId: metadata.workspaceId,
+      parentRecurringTaskId: metadata.parentRecurringTaskId,
+      createdTime: metadata.createdTime,
+      updatedTime: metadata.updatedTime,
+      scheduledStart: metadata.scheduledStart,
+      scheduledEnd: metadata.scheduledEnd,
+      deadline: metadata.deadline,
+      deadlineType: metadata.deadlineType,
+      duration: metadata.duration,
+      autoScheduled: metadata.autoScheduled,
+      completed: metadata.completed,
+      labels: metadata.labels,
+      chunks: metadata.chunks,
+    };
+  }
+}
+
+// Factory function for creating storage service
+export function createStorageService(config: StorageConfig): StorageService {
+  return new StorageService(config);
 }

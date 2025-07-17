@@ -1,23 +1,23 @@
-// Generated model: {{modelName}}
+// Generated model: {{{modelName}}}
 // This file is auto-generated. Do not edit manually.
 
-{{#imports}}
-import { {{imports}} } from './';
-{{/imports}}
+{{#hasImports}}
+import { {{{imports}}} } from './';
+{{/hasImports}}
 
 {{#isEnum}}
-export type {{modelName}} = {{#enumValues}}'{{value}}'{{#hasMore}} | {{/hasMore}}{{/enumValues}};
+export type {{{modelName}}} = {{#enumValues}}'{{{value}}}'{{#hasMore}} | {{/hasMore}}{{/enumValues}};
 {{/isEnum}}
 
 {{#isAlias}}
-export type {{modelName}} = {{aliasType}};
+export type {{{modelName}}} = {{{aliasType}}};
 {{/isAlias}}
 
 {{^isEnum}}
 {{^isAlias}}
-export interface {{modelName}} {
+export interface {{{modelName}}} {
 {{#properties}}
-  {{name}}{{^required}}?{{/required}}: {{type}};
+  {{{name}}}{{^required}}?{{/required}}: {{{type}}};
 {{/properties}}
 }
 {{/isAlias}}

@@ -5,10 +5,10 @@
  * Motion API Client interface
  */
 export interface MotionAPIClient {
-  get: <T = any>(url: string, options?: { params?: Record<string, any> }) => Promise<{ data: T }>;
-  post: <T = any>(url: string, data?: any) => Promise<{ data: T }>;
-  patch: <T = any>(url: string, data?: any) => Promise<{ data: T }>;
-  delete: <T = any>(url: string) => Promise<{ data: T }>;
+  get: <T = unknown>(url: string, options?: { params?: Record<string, unknown> }) => Promise<{ data: T }>;
+  post: <T = unknown>(url: string, data?: unknown) => Promise<{ data: T }>;
+  patch: <T = unknown>(url: string, data?: unknown) => Promise<{ data: T }>;
+  delete: <T = unknown>(url: string) => Promise<{ data: T }>;
 }
 
 /**

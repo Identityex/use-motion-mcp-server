@@ -5,7 +5,6 @@ import { MotionStatus } from './';
 
 
 
-
 export interface MotionProject {
   id: string;
   name: string;

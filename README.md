@@ -33,7 +33,7 @@ A production-ready MCP (Model Context Protocol) Server that integrates with Moti
 
 1. **Clone and Install**
 ```bash
-git clone <repository-url>
+git clone https://github.com/your-org/motion-mcp-server.git
 cd motion-mcp-server
 npm install
 ```
@@ -50,9 +50,14 @@ MOTION_IS_TEAM_ACCOUNT=false  # true for team accounts
 
 3. **Build the Server**
 ```bash
-npm run build
-# or using Make
+# Generate OpenAPI routes first (required for first build)
+make openapi
+
+# Full build with OpenAPI generation + TypeScript compilation
 make build
+
+# OR for TypeScript compilation only (after OpenAPI generated)
+npm run build
 ```
 
 4. **Configure Claude Desktop**
@@ -73,42 +78,53 @@ Edit your `claude_desktop_config.json`:
 
 ## Architecture
 
-The server follows a **Controller → App (Commands/Queries) → Services** pattern with Functional/Reactive Programming (FRP) principles:
+The server follows a **Domain Controllers → App (Commands/Queries) → Services** pattern with Functional/Reactive Programming (FRP) principles:
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Controllers   │───▶│   App Layer     │───▶│    Services     │
-│   (MCP Tools)   │    │ Commands/Queries│    │ Motion/Storage  │
+│Domain Controllers│───▶│   App Layer     │───▶│    Services     │
+│  (MCP Handlers) │    │ Commands/Queries│    │ Motion/Storage  │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
 ### 🗂️ **Directory Structure**
 ```
 src/
-├── app/                    # Business logic
+├── api/mcp/v1-routes/     # Generated OpenAPI code
+│   ├── models/            # Generated TypeScript interfaces
+│   ├── routes/            # Generated controller interfaces
+│   └── tools.ts           # Generated MCP tool schemas
+├── api/mcp/v1-controllers/# Domain controller implementations
+│   ├── project-controller.ts
+│   ├── task-controller.ts
+│   ├── workflow-controller.ts
+│   ├── sync-controller.ts
+│   ├── context-controller.ts
+│   └── docs-controller.ts
+├── app/                   # Business logic layer
+│   ├── motion/            # Motion API commands & queries
 │   ├── projects/          # Project commands & queries
 │   ├── tasks/             # Task commands & queries
-│   ├── ai/                # AI-powered features
+│   ├── workflow/          # Workflow planning
 │   ├── sync/              # Synchronization logic
+│   ├── context/           # Context management
 │   └── docs/              # Documentation generation
-├── controllers/           # MCP request handlers
 ├── services/              # External service integrations
-│   ├── motion.service.ts  # Motion API client
-│   ├── storage.service.ts # Local file management
-│   └── ai.service.ts      # AI enhancements
-├── schemas/mcp/           # YAML-based tool definitions
-├── resources/             # MCP resources (files, prompts)
-└── types/                 # TypeScript interfaces
+│   ├── motion-service.ts  # Motion API client
+│   ├── storage/           # Local file management
+│   └── ai/                # AI enhancements
+├── setup/                 # Configuration and DI
+│   └── dependencies.ts    # Dependency injection
+└── server/index.ts        # MCP server entry point
 ```
 
-### 🔧 **YAML-Based Tools**
-Tools are defined in YAML schemas and automatically generated:
+### 🔧 **OpenAPI-Based Code Generation**
+Tools and interfaces are generated from YAML schemas:
 
-- `src/schemas/mcp/project-tools.yaml` - Project management tools
-- `src/schemas/mcp/task-tools.yaml` - Task operation tools
-- `src/schemas/mcp/ai-tools.yaml` - AI-powered tools
-- `src/schemas/mcp/sync-tools.yaml` - Sync and context tools
-- `src/schemas/mcp/docs-tools.yaml` - Documentation tools
+- Define tools in `schemas/mcp/v1/mcp-tools.yaml`
+- Custom Handlebars templates in `schemas/api-gen/server/`
+- Generated code in `src/api/mcp/v1-routes/`
+- Run `make openapi` to regenerate
 
 ## Available Tools
 

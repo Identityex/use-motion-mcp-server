@@ -1,15 +1,17 @@
 // Motion Queries
 // Read operations for Motion domain
 
-import { MotionService, ListProjectsParams, ListTasksParams, Project, Task } from '../../services/motion/motion-service';
+import { MotionService } from '../../services/motion-service';
+import { MotionProject, MotionTask } from '../../api/mcp/v1-routes/models';
+import { motionStatusToString } from '../../services/utils/type-mappers';
 
-export interface ListProjectsRequest {
+export interface MotionListProjectsRequest {
   readonly workspaceId?: string;
   readonly limit?: number;
   readonly cursor?: string;
 }
 
-export interface ListTasksRequest {
+export interface MotionListTasksRequest {
   readonly projectId?: string;
   readonly workspaceId?: string;
   readonly status?: 'TODO' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
@@ -42,8 +44,16 @@ export interface TaskSummary {
 }
 
 export interface MotionQueries {
-  readonly listProjects: (req: ListProjectsRequest) => Promise<ProjectSummary[]>;
-  readonly listTasks: (req: ListTasksRequest) => Promise<TaskSummary[]>;
+  readonly listProjects: (req: MotionListProjectsRequest) => Promise<ProjectSummary[]>;
+  readonly listTasks: (req: MotionListTasksRequest) => Promise<TaskSummary[]>;
+  readonly listProjectsWithPagination: (req: MotionListProjectsRequest) => Promise<{
+    projects: ProjectSummary[];
+    nextCursor?: string;
+  }>;
+  readonly listTasksWithPagination: (req: MotionListTasksRequest) => Promise<{
+    tasks: TaskSummary[];
+    nextCursor?: string;
+  }>;
 }
 
 export function createMotionQueries(deps: {
@@ -53,57 +63,82 @@ export function createMotionQueries(deps: {
 }): MotionQueries {
   return {
     listProjects: async (req) => {
-      const params: ListProjectsParams = {
+      const projects = await deps.services.motionService.listProjects({
         workspaceId: req.workspaceId,
         limit: req.limit,
         cursor: req.cursor,
-      };
-
-      const projects = await deps.services.motionService.listProjects(params);
+      });
       
       return projects.map(mapProjectToSummary);
     },
 
     listTasks: async (req) => {
-      const params: ListTasksParams = {
+      const tasks = await deps.services.motionService.listTasks({
         projectId: req.projectId,
         workspaceId: req.workspaceId,
         status: req.status,
         assigneeId: req.assigneeId,
         limit: req.limit,
         cursor: req.cursor,
-      };
-
-      const tasks = await deps.services.motionService.listTasks(params);
+      });
       
       return tasks.map(mapTaskToSummary);
+    },
+
+    listProjectsWithPagination: async (req) => {
+      const result = await deps.services.motionService.listProjectsWithPagination({
+        workspaceId: req.workspaceId,
+        limit: req.limit,
+        cursor: req.cursor,
+      });
+      
+      return {
+        projects: result.projects.map(mapProjectToSummary),
+        nextCursor: result.nextCursor,
+      };
+    },
+
+    listTasksWithPagination: async (req) => {
+      const result = await deps.services.motionService.listTasksWithPagination({
+        projectId: req.projectId,
+        workspaceId: req.workspaceId,
+        status: req.status,
+        assigneeId: req.assigneeId,
+        limit: req.limit,
+        cursor: req.cursor,
+      });
+      
+      return {
+        tasks: result.tasks.map(mapTaskToSummary),
+        nextCursor: result.nextCursor,
+      };
     },
   };
 }
 
-function mapProjectToSummary(project: Project): ProjectSummary {
+function mapProjectToSummary(project: MotionProject): ProjectSummary {
   return {
     id: project.id,
     name: project.name,
     description: project.description,
     workspaceId: project.workspaceId,
-    createdAt: project.createdAt,
-    updatedAt: project.updatedAt,
+    createdAt: project.createdTime,
+    updatedAt: project.updatedTime,
   };
 }
 
-function mapTaskToSummary(task: Task): TaskSummary {
+function mapTaskToSummary(task: MotionTask): TaskSummary {
   return {
     id: task.id,
     name: task.name,
     description: task.description,
-    status: task.status,
+    status: motionStatusToString(task.status) as TaskSummary['status'],
     priority: task.priority,
     projectId: task.projectId,
     workspaceId: task.workspaceId,
     assigneeId: task.assigneeId,
-    dueDate: task.dueDate,
-    createdAt: task.createdAt,
-    updatedAt: task.updatedAt,
+    dueDate: task.deadline,  // MotionTask uses deadline not dueDate
+    createdAt: task.createdTime,
+    updatedAt: task.updatedTime,
   };
 }

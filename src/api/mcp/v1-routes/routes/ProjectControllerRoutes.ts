@@ -1,25 +1,49 @@
-// Generated MCP Route: ProjectControllerRoutes
+// Generated MCP Controller: ProjectController
 // This file is auto-generated. Do not edit manually.
 
-import { MCPToolHandler } from '../../v1-controllers/types';
+import { MCPToolResponse } from '../models';
 
 /**
- * ProjectControllerRoutes - MCP Route Interface
+ * ProjectController - MCP Controller Interface
  */
-export interface ProjectControllerRoutes {
+export interface ProjectController {
   /**
    * List all projects with pagination
    */
-  listProjects: MCPToolHandler<{
+  listProjects: (req: {
     workspaceId?: string;
     limit?: number;
     cursor?: string;
-  }>;
+  }) => Promise<MCPToolResponse>;
+  /**
+   * Create a new project
+   */
+  createProject: (req: {
+    name: string;
+    description?: string;
+    workspaceId?: string;
+  }) => Promise<MCPToolResponse>;
+  /**
+   * Bind project to local storage
+   */
+  bindProject: (req: {
+    projectId: string;
+  }) => Promise<MCPToolResponse>;
+  /**
+   * Sync project with Motion
+   */
+  syncProject: (req: {
+    projectId: string;
+    force?: boolean;
+  }) => Promise<MCPToolResponse>;
 }
 
 /**
- * MCP tool names for ProjectController
+ * MCP tool names for Project
  */
-export const ProjectControllerToolNames = {
+export const ProjectToolNames = {
   listProjects: 'motion.project.list',
+  createProject: 'motion.project.create',
+  bindProject: 'motion.project.bind',
+  syncProject: 'motion.project.sync',
 } as const;

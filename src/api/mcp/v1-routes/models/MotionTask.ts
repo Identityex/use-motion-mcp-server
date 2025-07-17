@@ -5,7 +5,6 @@ import { MotionStatus, AutoScheduledConfig, TimeChunk } from './';
 
 
 
-
 export interface MotionTask {
   id: string;
   name: string;

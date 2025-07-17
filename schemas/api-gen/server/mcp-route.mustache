@@ -1,35 +1,35 @@
-// Generated MCP Route: {{controllerName}}Routes
+// Generated MCP Controller: {{{controllerName}}}Controller
 // This file is auto-generated. Do not edit manually.
 
 {{#imports}}
-import { {{.}} } from '../models';
+import { {{{.}}} } from '../models';
 {{/imports}}
-import { MCPToolHandler } from '../../v1-controllers/types';
+import { MCPToolResponse } from '../models';
 
 /**
- * {{controllerName}}Routes - MCP Route Interface
+ * {{{controllerName}}}Controller - MCP Controller Interface
  */
-export interface {{controllerName}}Routes {
+export interface {{{controllerName}}}Controller {
 {{#operations}}
   /**
-   * {{summary}}
+   * {{{summary}}}
    {{#description}}
-   * {{description}}
+   * {{{description}}}
    {{/description}}
    */
-  {{operationId}}: MCPToolHandler<{
+  {{{operationId}}}: (req: {
 {{#parameters}}
-    {{name}}{{^required}}?{{/required}}: {{type}};
+    {{{name}}}{{^required}}?{{/required}}: {{{type}}};
 {{/parameters}}
-  }>;
+  }) => Promise<MCPToolResponse>;
 {{/operations}}
 }
 
 /**
- * MCP tool names for {{controllerName}}
+ * MCP tool names for {{{controllerName}}}
  */
-export const {{controllerName}}ToolNames = {
+export const {{{controllerName}}}ToolNames = {
 {{#operations}}
-  {{operationId}}: '{{name}}',
+  {{{operationId}}}: '{{{name}}}',
 {{/operations}}
 } as const;

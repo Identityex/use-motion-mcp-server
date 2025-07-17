@@ -37,44 +37,64 @@ npm run build
 
 ### 3. First Use
 
-1. **Test the connection:**
-   ```
-   motion.project.list
-   ```
+After restarting Claude Desktop, test the Motion MCP Server:
 
-2. **Bind a project:**
-   ```
-   motion.project.bind projectId="your-project-id"
-   ```
+1. **Verify the server is loaded:**
+   - Look for "motion" in the available MCP servers
 
-3. **Create a task:**
-   ```
-   motion.task.create name="My first task" workspaceId="your-workspace-id"
-   ```
+2. **Test the connection:**
+   - Try listing your projects: `Use the motion.project.list tool`
 
-4. **Sync your data:**
-   ```
-   motion.sync.all
-   ```
+3. **Bind a project for local sync:**
+   - First list projects to get the ID
+   - Then bind: `Use motion.project.bind with projectId="proj_xxx"`
+
+4. **Create your first task:**
+   - `Use motion.task.create with name="My first task" and projectId="proj_xxx"`
 
 ## Example Workflow
 
-```markdown
-# 1. List all projects to find the one you want to work with
-motion.project.list
+Here's a typical workflow when using the Motion MCP Server:
 
-# 2. Bind the project for local sync
-motion.project.bind projectId="proj_123"
+1. **List your projects:**
+   ```
+   Use motion.project.list to see all projects
+   ```
 
-# 3. View all tasks in the project
-motion.task.list projectId="proj_123"
+2. **Bind a project for local work:**
+   ```
+   Use motion.project.bind with projectId="proj_123"
+   ```
 
-# 4. Create a new task with AI enrichment
-motion.task.create name="Implement user authentication" projectId="proj_123" workspaceId="ws_456" enrichWithAI=true
+3. **Create tasks with AI assistance:**
+   ```
+   Use motion.task.batch_create with:
+   - goal="Build user authentication system"
+   - projectId="proj_123"
+   - maxTasks=5
+   ```
 
-# 5. Sync all changes
-motion.sync.all
-```
+4. **View project tasks:**
+   ```
+   Use motion.task.list with projectId="proj_123"
+   ```
+
+5. **Enhance a task with AI:**
+   ```
+   Use motion.task.enrich with taskId="task_456"
+   ```
+
+6. **Generate project documentation:**
+   ```
+   Use motion.docs.create with:
+   - projectId="proj_123"
+   - type="readme"
+   ```
+
+7. **Sync everything:**
+   ```
+   Use motion.sync.all to sync all bound projects
+   ```
 
 ## Local File Structure
 
@@ -101,13 +121,42 @@ After binding a project, you'll see:
 
 ## Troubleshooting
 
-- **"API key required" error**: Check your `.env` file and Claude Desktop config
-- **Rate limit errors**: The server handles this automatically, but consider upgrading to a team account
-- **Sync conflicts**: Use `motion.sync.conflicts` to resolve conflicts manually
+### Common Issues
+
+**"API key required" error**
+- Check your `.env` file has `MOTION_API_KEY` set
+- Verify the Claude Desktop config includes the API key
+- Restart Claude Desktop after configuration changes
+
+**"Tool not found" error**
+- Ensure the server is running: `npm run dev`
+- Check Claude Desktop logs for connection errors
+- Verify the path in claude-desktop-config.json is correct
+
+**Rate limit errors**
+- Individual accounts: Limited to 12 requests/minute
+- Team accounts: Limited to 120 requests/minute
+- Set `MOTION_IS_TEAM_ACCOUNT=true` in config for team accounts
+
+**Project not bound locally**
+- Use `motion.project.bind` before sync operations
+- Check `.claude/motion/` directory for bound projects
+
+**Sync conflicts**
+- Use `motion.sync.check` to identify conflicts
+- Force sync with `motion.project.sync` with `force=true`
 
 ## Next Steps
 
-- Explore all available tools with their specific parameters
-- Set up project context for better AI assistance
-- Create documentation files for your projects
-- Automate workflows with batch operations
+- Read the [API Reference](API_REFERENCE.md) for detailed tool documentation
+- Review the [Architecture](ARCHITECTURE.md) document to understand the system
+- Set up project context with `motion.context.save` for better AI assistance
+- Use `motion.workflow.plan` to generate comprehensive project plans
+- Create documentation with `motion.docs.create` for your projects
+- Automate task creation with `motion.task.batch_create`
+
+## Additional Resources
+
+- [Motion API Documentation](https://docs.usemotion.com/)
+- [MCP Protocol Specification](https://spec.modelcontextprotocol.io/)
+- [Project Repository](https://github.com/your-org/motion-mcp-server)

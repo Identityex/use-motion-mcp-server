@@ -10,23 +10,23 @@ export const MCPTools: Tool[] = [
 {{#controllers}}
 {{#operations}}
   {
-    name: '{{name}}',
-    description: '{{summary}}',
+    name: '{{{name}}}',
+    description: '{{{summary}}}',
     inputSchema: {
       type: 'object',
       {{#requiredParams.length}}
-      required: [{{#requiredParams}}'{{name}}'{{#hasMore}}, {{/hasMore}}{{/requiredParams}}],
+      required: [{{#requiredParams}}'{{{name}}}'{{#hasMore}}, {{/hasMore}}{{/requiredParams}}],
       {{/requiredParams.length}}
       properties: {
 {{#parameters}}
-        {{name}}: {
-          type: '{{schemaType}}'{{#description}},
-          description: '{{description}}'{{/description}}{{#enum}},
-          enum: [{{#enum}}'{{.}}'{{#hasMore}}, {{/hasMore}}{{/enum}}]{{/enum}}{{#minimum}},
-          minimum: {{minimum}}{{/minimum}}{{#maximum}},
-          maximum: {{maximum}}{{/maximum}}{{#default}},
-          default: {{default}}{{/default}}
-        },
+        {{{name}}}: {
+          type: '{{{schemaType}}}'{{#description}},
+          description: '{{{description}}}'{{/description}}{{#hasEnum}},
+          enum: [{{#enumValues}}'{{{value}}}'{{#hasMore}}, {{/hasMore}}{{/enumValues}}]{{/hasEnum}}{{#hasMinimum}},
+          minimum: {{{minimum}}}{{/hasMinimum}}{{#hasMaximum}},
+          maximum: {{{maximum}}}{{/hasMaximum}}{{#hasDefault}},
+          default: {{{default}}}{{/hasDefault}}
+        }{{#hasMore}},{{/hasMore}}
 {{/parameters}}
       }
     }

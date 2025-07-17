@@ -8,5 +8,4 @@ export interface CreateProjectRequest {
   name: string;
   description?: string;
   workspaceId?: string;
-  enrich?: boolean;
 }

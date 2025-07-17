@@ -11,12 +11,14 @@ import {
   MotionStatus,
   CreateProjectRequest,
   CreateTaskRequest,
-  UpdateTaskRequest,
   CreateRecurringTaskRequest,
   CreateCommentRequest,
   ListResponse,
   MotionApiError,
 } from '../../types/motion-api';
+import { UpdateTaskRequest } from '../../types/motion';
+import { createDomainLogger, PerformanceLogger } from '../utils/logger';
+import { rateLimitTracker } from './rate-limiter';
 
 export interface MotionClientConfig {
   apiKey: string;
@@ -29,9 +31,15 @@ export class MotionClient {
   private readonly http: AxiosInstance;
   private readonly queue: PQueue;
   private readonly isTeamAccount: boolean;
+  private readonly logger = createDomainLogger('motion-client');
 
   constructor(config: MotionClientConfig) {
     this.isTeamAccount = config.isTeamAccount ?? false;
+    
+    this.logger.info('Initializing Motion client', {
+      isTeamAccount: this.isTeamAccount,
+      baseUrl: config.baseUrl ?? 'https://api.usemotion.com/v1',
+    });
     
     this.http = axios.create({
       baseURL: config.baseUrl ?? 'https://api.usemotion.com/v1',
@@ -55,8 +63,42 @@ export class MotionClient {
   }
 
   private setupInterceptors(): void {
+    // Request interceptor for logging
+    this.http.interceptors.request.use(
+      (config) => {
+        this.logger.debug('Motion API request', {
+          method: config.method,
+          url: config.url,
+          params: config.params,
+          // Don't log request body as it might contain sensitive data
+          hasBody: !!config.data,
+        });
+        return config;
+      },
+      (error) => {
+        this.logger.error('Motion API request error', { error: error.message });
+        return Promise.reject(error);
+      }
+    );
+
+    // Response interceptor for error handling and logging
     this.http.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        this.logger.debug('Motion API response', {
+          method: response.config.method,
+          url: response.config.url,
+          status: response.status,
+          // Don't log response data as it might contain sensitive information
+        });
+        
+        // Track rate limit headers
+        if (response.headers) {
+          const endpoint = response.config.url || '';
+          rateLimitTracker.updateFromHeaders(endpoint, response.headers as any);
+        }
+        
+        return response;
+      },
       (error) => {
         if (error.response) {
           const motionError: MotionApiError = {
@@ -64,8 +106,23 @@ export class MotionClient {
             message: error.response.data?.message || error.message,
             statusCode: error.response.status,
           };
+          
+          this.logger.error('Motion API error response', {
+            method: error.config?.method,
+            url: error.config?.url,
+            status: error.response.status,
+            error: motionError.error,
+            message: motionError.message,
+          });
+          
           throw motionError;
         }
+        
+        this.logger.error('Motion API network error', {
+          error: error.message,
+          code: error.code,
+        });
+        
         throw error;
       }
     );
@@ -77,30 +134,45 @@ export class MotionClient {
     data?: unknown,
     params?: Record<string, unknown>
   ): Promise<T> {
-    const result = await this.queue.add(async () => {
-      return pRetry(
-        async () => {
-          const response: AxiosResponse<T> = await this.http.request({
-            method,
-            url: endpoint,
-            data,
-            params,
-          });
-          return response.data;
-        },
-        {
-          retries: 3,
-          factor: 2,
-          minTimeout: 1000,
-          maxTimeout: 10000,
-          onFailedAttempt: (error) => {
-            if ('statusCode' in error) {
-              const statusCode = (error as any).statusCode;
-              if (statusCode === 429) {
-                throw error;
-              }
-              if (statusCode && statusCode >= 500) {
-                return;
+    const perfLog = new PerformanceLogger(this.logger, `${method} ${endpoint}`);
+    
+    // Check if we should delay due to rate limits
+    const delayInfo = rateLimitTracker.shouldDelay(endpoint);
+    if (delayInfo.delay && delayInfo.waitMs) {
+      this.logger.info('Delaying request due to rate limit', {
+        endpoint,
+        waitMs: delayInfo.waitMs,
+      });
+      await new Promise(resolve => setTimeout(resolve, delayInfo.waitMs));
+    }
+    
+    try {
+      const result = await this.queue.add(async () => {
+        return pRetry(
+          async () => {
+            const response: AxiosResponse<T> = await this.http.request({
+              method,
+              url: endpoint,
+              data,
+              params,
+            });
+            return response.data;
+          },
+          {
+            retries: 3,
+            factor: 2,
+            minTimeout: 1000,
+            maxTimeout: 10000,
+            onFailedAttempt: (error) => {
+              if ('statusCode' in error) {
+                const statusCode = (error as any).statusCode;
+                if (statusCode === 429) {
+                  this.logger.warn('Rate limit hit, not retrying', { endpoint });
+                  throw error;
+                }
+                if (statusCode && statusCode >= 500) {
+                  this.logger.warn('Server error, will retry', { endpoint, statusCode });
+                  return;
               }
             }
             throw error;
@@ -113,8 +185,13 @@ export class MotionClient {
       throw new Error('Queue returned undefined result');
     }
     
+    perfLog.end({ queueSize: this.queue.size });
     return result;
+  } catch (error) {
+    perfLog.error(error);
+    throw error;
   }
+}
 
   async getWorkspaces(): Promise<MotionWorkspace[]> {
     const response = await this.makeRequest<{ workspaces: MotionWorkspace[] }>('GET', '/workspaces');
@@ -228,5 +305,15 @@ export class MotionClient {
 
   async waitForQueue(): Promise<void> {
     await this.queue.onIdle();
+  }
+
+  async getRateLimitStatus(): Promise<{
+    queueStatus: { waiting: number; pending: number };
+    rateLimits: Record<string, { percentUsed: number; remaining: number; resetIn: number }>;
+  }> {
+    return {
+      queueStatus: await this.getQueueStatus(),
+      rateLimits: rateLimitTracker.getSummary(),
+    };
   }
 }

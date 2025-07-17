@@ -5,10 +5,15 @@
  * This follows the work-stable-api pattern of generating directly into source
  */
 
-const fs = require('fs');
-const path = require('path');
-const yaml = require('js-yaml');
-const Handlebars = require('handlebars');
+import fs from 'fs';
+import path from 'path';
+import yaml from 'js-yaml';
+import Handlebars from 'handlebars';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Command line arguments
 const schemaDir = process.argv[2] || 'schemas/mcp/v1';
@@ -72,6 +77,12 @@ routeFiles.forEach(file => {
   if (content.paths) {
     if (!api.paths) api.paths = {};
     Object.assign(api.paths, content.paths);
+  }
+  // Also merge component schemas from route files
+  if (content.components?.schemas) {
+    if (!api.components) api.components = {};
+    if (!api.components.schemas) api.components.schemas = {};
+    Object.assign(api.components.schemas, content.components.schemas);
   }
 });
 
@@ -180,7 +191,7 @@ fs.mkdirSync(path.join(outputDir, 'models'), { recursive: true });
 // Generate route files for each controller
 Object.values(controllers).forEach(controller => {
   const routeData = {
-    controllerName: controller.name,
+    controllerName: controller.name.replace(/Controller$/, ''), // Remove 'Controller' suffix to avoid duplication
     operations: controller.operations,
     imports: extractImports(controller.operations, api)
   };
@@ -199,10 +210,44 @@ const toolsData = {
       const requiredParams = op.parameters.filter(p => p.required);
       return {
         ...op,
-        parameters: op.parameters.map((param, index, array) => ({
-          ...param,
-          hasMore: index < array.length - 1
-        })),
+        parameters: op.parameters.map((param, index, array) => {
+          // Process enum values if they exist
+          let enumValues = null;
+          if (param.enum && Array.isArray(param.enum)) {
+            enumValues = param.enum.map((value, idx) => ({
+              value,
+              hasMore: idx < param.enum.length - 1
+            }));
+          }
+          
+          // Format default value based on type
+          let formattedDefault = param.default;
+          if (param.default !== undefined && param.schemaType === 'string') {
+            formattedDefault = `'${param.default}'`;
+          }
+          
+          const result = {
+            ...param,
+            enumValues,
+            hasEnum: !!enumValues,
+            hasMore: index < array.length - 1,
+            default: formattedDefault,
+            // Add boolean flags for template conditionals
+            hasMinimum: param.minimum !== undefined,
+            hasMaximum: param.maximum !== undefined,
+            hasDefault: param.default !== undefined
+          };
+          
+          // Only include minimum/maximum if they are defined
+          if (param.minimum !== undefined) {
+            result.minimum = param.minimum;
+          }
+          if (param.maximum !== undefined) {
+            result.maximum = param.maximum;
+          }
+          
+          return result;
+        }),
         requiredParams: requiredParams.map((param, index, array) => ({
           ...param,
           hasMore: index < array.length - 1
@@ -211,6 +256,7 @@ const toolsData = {
     })
   }))
 };
+
 const toolsContent = toolsCompiler(toolsData);
 fs.writeFileSync(path.join(outputDir, 'tools.ts'), toolsContent);
 
@@ -329,6 +375,7 @@ function prepareModelData(name, schema, allSchemas) {
     isEnum: false,
     isAlias: false,
     imports: imports.size > 0 ? Array.from(imports).join(', ') : null,
+    hasImports: imports.size > 0,
     properties
   };
 }

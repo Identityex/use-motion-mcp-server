@@ -1,8 +1,7 @@
 // Jest setup file for Motion MCP Server
+// Configures test environment for ES modules
 
-// Configure jest-extended for additional matchers
-// Note: We're not installing jest-extended yet to keep dependencies minimal
-// but this setup file is prepared for future extensions
+import { jest } from '@jest/globals';
 
 // Global test configuration
 beforeEach(() => {
@@ -21,9 +20,9 @@ process.on('unhandledRejection', (reason, promise) => {
 jest.setTimeout(30000);
 
 // Mock console methods to reduce noise in tests
-global.console = {
+// Keep console.error for debugging
+globalThis.console = {
   ...console,
-  // Keep console.error for debugging
   log: jest.fn(),
   warn: jest.fn(),
   info: jest.fn(),

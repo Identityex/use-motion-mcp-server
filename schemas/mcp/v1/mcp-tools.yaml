@@ -10,6 +10,18 @@ servers:
 
 components:
   schemas:
+    MCPContent:
+      type: object
+      required:
+        - type
+        - text
+      properties:
+        type:
+          type: string
+          enum: [text]
+        text:
+          type: string
+    
     MCPToolResponse:
       type: object
       required:
@@ -18,13 +30,7 @@ components:
         content:
           type: array
           items:
-            type: object
-            properties:
-              text_type:
-                type: string
-                enum: [text]
-              text_content:
-                type: string
+            $ref: '#/components/schemas/MCPContent'
         isError:
           type: boolean
           default: false
@@ -46,6 +52,38 @@ components:
         cursor:
           type: string
 
+    CreateProjectRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        workspaceId:
+          type: string
+
+    BindProjectRequest:
+      type: object
+      required:
+        - projectId
+      properties:
+        projectId:
+          type: string
+
+    SyncProjectRequest:
+      type: object
+      required:
+        - projectId
+      properties:
+        projectId:
+          type: string
+        force:
+          type: boolean
+          default: false
+
     CreateTaskRequest:
       type: object
       required:
@@ -61,6 +99,217 @@ components:
         enrich:
           type: boolean
           default: false
+        projectId:
+          type: string
+        duration:
+          type: integer
+          minimum: 0
+        dueDate:
+          type: string
+          format: date-time
+
+    BatchCreateTasksRequest:
+      type: object
+      required:
+        - goal
+        - projectId
+      properties:
+        goal:
+          type: string
+          minLength: 1
+        projectId:
+          type: string
+        maxTasks:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 5
+        context:
+          type: string
+
+    ListTasksRequest:
+      type: object
+      properties:
+        projectId:
+          type: string
+        status:
+          type: string
+          enum: [TODO, IN_PROGRESS, COMPLETED, CANCELLED]
+        priority:
+          $ref: '#/components/schemas/Priority'
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+        cursor:
+          type: string
+
+    SearchTasksRequest:
+      type: object
+      required:
+        - query
+      properties:
+        query:
+          type: string
+          minLength: 1
+        projectId:
+          type: string
+        status:
+          type: string
+          enum: [TODO, IN_PROGRESS, COMPLETED, CANCELLED]
+
+    UpdateTaskRequest:
+      type: object
+      required:
+        - taskId
+      properties:
+        taskId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [TODO, IN_PROGRESS, COMPLETED, CANCELLED]
+        priority:
+          $ref: '#/components/schemas/Priority'
+        duration:
+          type: integer
+          minimum: 0
+        dueDate:
+          type: string
+          format: date-time
+
+    CompleteTaskRequest:
+      type: object
+      required:
+        - taskId
+      properties:
+        taskId:
+          type: string
+
+    MoveTaskRequest:
+      type: object
+      required:
+        - taskId
+        - targetProjectId
+      properties:
+        taskId:
+          type: string
+        targetProjectId:
+          type: string
+
+    EnrichTaskRequest:
+      type: object
+      required:
+        - taskId
+      properties:
+        taskId:
+          type: string
+        context:
+          type: string
+
+    AnalyzeTaskRequest:
+      type: object
+      required:
+        - taskId
+      properties:
+        taskId:
+          type: string
+
+    PlanWorkflowRequest:
+      type: object
+      required:
+        - goal
+        - projectId
+      properties:
+        goal:
+          type: string
+          minLength: 1
+        projectId:
+          type: string
+        context:
+          type: string
+        constraints:
+          type: object
+          additionalProperties: true
+
+    SyncAllRequest:
+      type: object
+      properties:
+        force:
+          type: boolean
+          default: false
+
+    CheckSyncRequest:
+      type: object
+      properties:
+        projectId:
+          type: string
+
+    SaveContextRequest:
+      type: object
+      required:
+        - projectId
+        - context
+      properties:
+        projectId:
+          type: string
+        context:
+          type: string
+
+    LoadContextRequest:
+      type: object
+      required:
+        - projectId
+      properties:
+        projectId:
+          type: string
+
+    CreateDocsRequest:
+      type: object
+      required:
+        - projectId
+        - type
+      properties:
+        projectId:
+          type: string
+        type:
+          type: string
+          enum: [readme, architecture, api, user-guide]
+        template:
+          type: string
+
+    UpdateDocsRequest:
+      type: object
+      required:
+        - projectId
+        - docId
+        - content
+      properties:
+        projectId:
+          type: string
+        docId:
+          type: string
+        content:
+          type: string
+
+    StatusReportRequest:
+      type: object
+      required:
+        - projectId
+      properties:
+        projectId:
+          type: string
+        format:
+          type: string
+          enum: [markdown, json, summary]
+          default: markdown
+        includeMetrics:
+          type: boolean
+          default: true
 
 paths:
   /tools/motion.project.list:
@@ -86,6 +335,78 @@ paths:
               schema:
                 $ref: '#/components/schemas/MCPToolResponse'
 
+  /tools/motion.project.create:
+    post:
+      summary: Create a new project
+      operationId: createProject
+      x-mcp-tool:
+        controller: ProjectController
+        action: create
+        validation:
+          required: [name]
+          optional: [description, workspaceId]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectRequest'
+      responses:
+        '200':
+          description: Project created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPToolResponse'
+
+  /tools/motion.project.bind:
+    post:
+      summary: Bind project to local storage
+      operationId: bindProject
+      x-mcp-tool:
+        controller: ProjectController
+        action: bind
+        validation:
+          required: [projectId]
+          optional: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BindProjectRequest'
+      responses:
+        '200':
+          description: Project bound successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPToolResponse'
+
+  /tools/motion.project.sync:
+    post:
+      summary: Sync project with Motion
+      operationId: syncProject
+      x-mcp-tool:
+        controller: ProjectController
+        action: sync
+        validation:
+          required: [projectId]
+          optional: [force]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncProjectRequest'
+      responses:
+        '200':
+          description: Project synced successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPToolResponse'
+
   /tools/motion.task.create:
     post:
       summary: Create a new task
@@ -95,7 +416,7 @@ paths:
         action: create
         validation:
           required: [name]
-          optional: [description, priority, enrich]
+          optional: [description, priority, enrich, projectId, duration, dueDate]
       requestBody:
         required: true
         content:
@@ -105,6 +426,387 @@ paths:
       responses:
         '200':
           description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPToolResponse'
+
+  /tools/motion.task.batch_create:
+    post:
+      summary: Create multiple tasks from goals
+      operationId: batchCreateTasks
+      x-mcp-tool:
+        controller: TaskController
+        action: batchCreate
+        validation:
+          required: [goal, projectId]
+          optional: [maxTasks, context]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchCreateTasksRequest'
+      responses:
+        '200':
+          description: Tasks created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPToolResponse'
+
+  /tools/motion.task.list:
+    post:
+      summary: List and filter tasks
+      operationId: listTasks
+      x-mcp-tool:
+        controller: TaskController
+        action: list
+        validation:
+          required: []
+          optional: [projectId, status, priority, limit, cursor]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListTasksRequest'
+      responses:
+        '200':
+          description: Tasks listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPToolResponse'
+
+  /tools/motion.task.search:
+    post:
+      summary: Search tasks in local storage
+      operationId: searchTasks
+      x-mcp-tool:
+        controller: TaskController
+        action: search
+        validation:
+          required: [query]
+          optional: [projectId, status]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchTasksRequest'
+      responses:
+        '200':
+          description: Tasks found successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPToolResponse'
+
+  /tools/motion.task.update:
+    post:
+      summary: Update task properties
+      operationId: updateTask
+      x-mcp-tool:
+        controller: TaskController
+        action: update
+        validation:
+          required: [taskId]
+          optional: [name, description, status, priority, duration, dueDate]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskRequest'
+      responses:
+        '200':
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPToolResponse'
+
+  /tools/motion.task.complete:
+    post:
+      summary: Mark tasks as completed
+      operationId: completeTask
+      x-mcp-tool:
+        controller: TaskController
+        action: complete
+        validation:
+          required: [taskId]
+          optional: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteTaskRequest'
+      responses:
+        '200':
+          description: Task completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPToolResponse'
+
+  /tools/motion.task.move:
+    post:
+      summary: Move task to different project
+      operationId: moveTask
+      x-mcp-tool:
+        controller: TaskController
+        action: move
+        validation:
+          required: [taskId, targetProjectId]
+          optional: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoveTaskRequest'
+      responses:
+        '200':
+          description: Task moved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPToolResponse'
+
+  /tools/motion.task.enrich:
+    post:
+      summary: AI-enhance task descriptions
+      operationId: enrichTask
+      x-mcp-tool:
+        controller: TaskController
+        action: enrich
+        validation:
+          required: [taskId]
+          optional: [context]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrichTaskRequest'
+      responses:
+        '200':
+          description: Task enriched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPToolResponse'
+
+  /tools/motion.task.analyze:
+    post:
+      summary: Analyze task complexity
+      operationId: analyzeTask
+      x-mcp-tool:
+        controller: TaskController
+        action: analyze
+        validation:
+          required: [taskId]
+          optional: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalyzeTaskRequest'
+      responses:
+        '200':
+          description: Task analyzed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPToolResponse'
+
+  /tools/motion.workflow.plan:
+    post:
+      summary: Generate comprehensive plans
+      operationId: planWorkflow
+      x-mcp-tool:
+        controller: WorkflowController
+        action: plan
+        validation:
+          required: [goal, projectId]
+          optional: [context, constraints]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PlanWorkflowRequest'
+      responses:
+        '200':
+          description: Workflow planned successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPToolResponse'
+
+  /tools/motion.sync.all:
+    post:
+      summary: Sync all bound projects
+      operationId: syncAll
+      x-mcp-tool:
+        controller: SyncController
+        action: syncAll
+        validation:
+          required: []
+          optional: [force]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncAllRequest'
+      responses:
+        '200':
+          description: All projects synced successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPToolResponse'
+
+  /tools/motion.sync.check:
+    post:
+      summary: Check sync status
+      operationId: checkSync
+      x-mcp-tool:
+        controller: SyncController
+        action: check
+        validation:
+          required: []
+          optional: [projectId]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckSyncRequest'
+      responses:
+        '200':
+          description: Sync status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPToolResponse'
+
+  /tools/motion.context.save:
+    post:
+      summary: Save project context for AI
+      operationId: saveContext
+      x-mcp-tool:
+        controller: ContextController
+        action: save
+        validation:
+          required: [projectId, context]
+          optional: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveContextRequest'
+      responses:
+        '200':
+          description: Context saved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPToolResponse'
+
+  /tools/motion.context.load:
+    post:
+      summary: Load project context
+      operationId: loadContext
+      x-mcp-tool:
+        controller: ContextController
+        action: load
+        validation:
+          required: [projectId]
+          optional: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoadContextRequest'
+      responses:
+        '200':
+          description: Context loaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPToolResponse'
+
+  /tools/motion.docs.create:
+    post:
+      summary: Generate project documentation
+      operationId: createDocs
+      x-mcp-tool:
+        controller: DocsController
+        action: create
+        validation:
+          required: [projectId, type]
+          optional: [template]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDocsRequest'
+      responses:
+        '200':
+          description: Documentation created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPToolResponse'
+
+  /tools/motion.docs.update:
+    post:
+      summary: Update existing docs
+      operationId: updateDocs
+      x-mcp-tool:
+        controller: DocsController
+        action: update
+        validation:
+          required: [projectId, docId, content]
+          optional: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDocsRequest'
+      responses:
+        '200':
+          description: Documentation updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPToolResponse'
+
+  /tools/motion.status.report:
+    post:
+      summary: Generate status reports
+      operationId: generateStatusReport
+      x-mcp-tool:
+        controller: DocsController
+        action: statusReport
+        validation:
+          required: [projectId]
+          optional: [format, includeMetrics]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusReportRequest'
+      responses:
+        '200':
+          description: Status report generated successfully
           content:
             application/json:
               schema:

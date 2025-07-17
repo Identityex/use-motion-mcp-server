@@ -6,9 +6,7 @@
 
 export interface BatchCreateTasksRequest {
   goal: string;
-  context?: string;
-  projectId?: string;
-  workspaceId?: string;
+  projectId: string;
   maxTasks?: number;
-  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+  context?: string;
 }

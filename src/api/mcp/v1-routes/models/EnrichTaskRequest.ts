@@ -5,7 +5,6 @@
 
 
 export interface EnrichTaskRequest {
-  taskName: string;
-  description?: string;
-  projectId?: string;
+  taskId: string;
+  context?: string;
 }

@@ -1,12 +1,27 @@
 // Dependencies Setup
 // Dependency injection configuration following work-stable-api pattern
 
-import { MotionClient } from '../services/motion/client';
-import { createMotionService } from '../services/motion/motion-service';
+import { createMotionService } from '../services/motion-service';
+import { createStorageService } from '../services/storage/storage-service';
 import { createAIService } from '../services/ai/ai-service';
+import { AIProviderType } from '../services/ai/providers/provider-factory';
 import { createMotionCommands } from '../app/motion/motion-commands';
 import { createMotionQueries } from '../app/motion/motion-queries';
-import { createMotionController } from '../api/mcp/v1-controllers/motion-controller';
+import { createProjectCommands } from '../app/projects/project-commands';
+import { createTaskCommands } from '../app/tasks/task-commands';
+import { createTaskQueries } from '../app/tasks/task-queries';
+import { createWorkflowCommands } from '../app/workflow/workflow-commands';
+import { createSyncCommands } from '../app/sync/sync-commands';
+import { createContextCommands } from '../app/context/context-commands';
+import { createDocsCommands } from '../app/docs/docs-commands';
+import {
+  createProjectController,
+  createTaskController,
+  createWorkflowController,
+  createSyncController,
+  createContextController,
+  createDocsController,
+} from '../api/mcp/v1-controllers';
 
 // Configuration interface
 export interface Config {
@@ -24,43 +39,95 @@ export interface Config {
 // Dependencies interface
 export interface Dependencies {
   readonly controllers: {
-    readonly motionController: ReturnType<typeof createMotionController>;
+    readonly projectController: ReturnType<typeof createProjectController>;
+    readonly taskController: ReturnType<typeof createTaskController>;
+    readonly workflowController: ReturnType<typeof createWorkflowController>;
+    readonly syncController: ReturnType<typeof createSyncController>;
+    readonly contextController: ReturnType<typeof createContextController>;
+    readonly docsController: ReturnType<typeof createDocsController>;
   };
   readonly app: {
     readonly motionCommands: ReturnType<typeof createMotionCommands>;
     readonly motionQueries: ReturnType<typeof createMotionQueries>;
+    readonly projectCommands: ReturnType<typeof createProjectCommands>;
+    readonly taskCommands: ReturnType<typeof createTaskCommands>;
+    readonly taskQueries: ReturnType<typeof createTaskQueries>;
+    readonly workflowCommands: ReturnType<typeof createWorkflowCommands>;
+    readonly syncCommands: ReturnType<typeof createSyncCommands>;
+    readonly contextCommands: ReturnType<typeof createContextCommands>;
+    readonly docsCommands: ReturnType<typeof createDocsCommands>;
   };
   readonly services: {
     readonly motionService: ReturnType<typeof createMotionService>;
+    readonly storageService: ReturnType<typeof createStorageService>;
     readonly aiService: ReturnType<typeof createAIService>;
   };
 }
 
 // Create all dependencies with proper wiring
 export function createDependencies(config: Config): Dependencies {
-  // Create service clients
-  const motionClient = new MotionClient({
+  // Create services
+  const motionService = createMotionService({
     apiKey: config.motion.apiKey,
     baseUrl: config.motion.baseUrl,
+    workspaceId: config.motion.workspaceId,
   });
-
-  // Create services
-  const motionService = createMotionService({ client: motionClient });
+  
+  const storageService = createStorageService({
+    baseDir: '.claude/motion',
+  });
+  
   const aiService = createAIService({ 
     config: {
+      provider: (process.env.AI_PROVIDER as AIProviderType) || 'mock',
+      apiKey: config.ai?.apiKey,
+      model: config.ai?.model,
+      baseUrl: process.env.AI_BASE_URL,
       enableEnrichment: config.ai?.apiKey ? true : false,
     }
   });
-  const services = { motionService, aiService };
+  
+  const services = { motionService, storageService, aiService };
 
   // Create app layer
   const motionCommands = createMotionCommands({ services });
   const motionQueries = createMotionQueries({ services });
-  const app = { motionCommands, motionQueries };
+  const projectCommands = createProjectCommands({ services });
+  const taskCommands = createTaskCommands({ services });
+  const taskQueries = createTaskQueries({ services });
+  const workflowCommands = createWorkflowCommands({ services });
+  const syncCommands = createSyncCommands({ services });
+  const contextCommands = createContextCommands({ services });
+  const docsCommands = createDocsCommands({ services });
+  
+  const app = { 
+    motionCommands, 
+    motionQueries,
+    projectCommands,
+    taskCommands,
+    taskQueries,
+    workflowCommands,
+    syncCommands,
+    contextCommands,
+    docsCommands
+  };
 
   // Create controllers
-  const motionController = createMotionController({ app });
-  const controllers = { motionController };
+  const projectController = createProjectController({ app });
+  const taskController = createTaskController({ app });
+  const workflowController = createWorkflowController({ app });
+  const syncController = createSyncController({ app });
+  const contextController = createContextController({ app });
+  const docsController = createDocsController({ app });
+  
+  const controllers = { 
+    projectController,
+    taskController,
+    workflowController,
+    syncController,
+    contextController,
+    docsController,
+  };
 
   return {
     controllers,

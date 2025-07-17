@@ -1,10 +1,11 @@
 // Generated model: MCPToolResponse
 // This file is auto-generated. Do not edit manually.
 
+import { MCPContent } from './';
 
 
 
 export interface MCPToolResponse {
-  content: Array<Record<string, any>>;
+  content: Array<MCPContent>;
   isError?: boolean;
 }

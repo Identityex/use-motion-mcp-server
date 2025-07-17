@@ -1,17 +1,23 @@
 // Motion Commands
 // Write operations for Motion domain
 
-import { MotionService, CreateProjectParams, CreateTaskParams, UpdateTaskParams } from '../../services/motion/motion-service';
+import { MotionService } from '../../services/motion-service';
 import { AIService } from '../../services/ai/ai-service';
+import { 
+  CreateProjectRequest,
+  CreateTaskRequest,
+  UpdateTaskRequest 
+} from '../../api/mcp/v1-routes/models';
 
-export interface CreateProjectRequest {
+// Motion-specific request types that extend the base MCP types
+export interface MotionCreateProjectRequest {
   readonly name: string;
   readonly description?: string;
   readonly workspaceId?: string;
   readonly enrich?: boolean;
 }
 
-export interface CreateTaskRequest {
+export interface MotionCreateTaskRequest {
   readonly name: string;
   readonly description?: string;
   readonly priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
@@ -19,10 +25,11 @@ export interface CreateTaskRequest {
   readonly workspaceId?: string;
   readonly assigneeId?: string;
   readonly dueDate?: string;
+  readonly duration?: number;
   readonly enrich?: boolean;
 }
 
-export interface UpdateTaskRequest {
+export interface MotionUpdateTaskRequest {
   readonly taskId: string;
   readonly name?: string;
   readonly description?: string;
@@ -30,13 +37,14 @@ export interface UpdateTaskRequest {
   readonly priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   readonly assigneeId?: string;
   readonly dueDate?: string;
+  readonly duration?: number;
   readonly enrich?: boolean;
 }
 
 export interface MotionCommands {
-  readonly createProject: (req: CreateProjectRequest) => Promise<{ id: string; name: string; description?: string }>;
-  readonly createTask: (req: CreateTaskRequest) => Promise<{ id: string; name: string; description?: string }>;
-  readonly updateTask: (req: UpdateTaskRequest) => Promise<{ id: string; name: string; description?: string }>;
+  readonly createProject: (req: MotionCreateProjectRequest) => Promise<{ id: string; name: string; description?: string }>;
+  readonly createTask: (req: MotionCreateTaskRequest) => Promise<{ id: string; name: string; description?: string }>;
+  readonly updateTask: (req: MotionUpdateTaskRequest) => Promise<{ id: string; name: string; description?: string }>;
 }
 
 export function createMotionCommands(deps: {
@@ -57,13 +65,11 @@ export function createMotionCommands(deps: {
         );
       }
 
-      const params: CreateProjectParams = {
+      const project = await deps.services.motionService.createProject({
         name: req.name,
         description,
         workspaceId: req.workspaceId,
-      };
-
-      const project = await deps.services.motionService.createProject(params);
+      });
       
       return {
         id: project.id,
@@ -83,17 +89,14 @@ export function createMotionCommands(deps: {
         );
       }
 
-      const params: CreateTaskParams = {
+      const task = await deps.services.motionService.createTask({
         name: req.name,
         description,
         priority: req.priority,
         projectId: req.projectId,
-        workspaceId: req.workspaceId,
-        assigneeId: req.assigneeId,
+        duration: req.duration,
         dueDate: req.dueDate,
-      };
-
-      const task = await deps.services.motionService.createTask(params);
+      });
       
       return {
         id: task.id,
@@ -113,17 +116,14 @@ export function createMotionCommands(deps: {
         );
       }
 
-      const params: UpdateTaskParams = {
+      const task = await deps.services.motionService.updateTask({
         taskId: req.taskId,
         name: req.name,
         description,
         status: req.status,
         priority: req.priority,
-        assigneeId: req.assigneeId,
         dueDate: req.dueDate,
-      };
-
-      const task = await deps.services.motionService.updateTask(params);
+      });
       
       return {
         id: task.id,

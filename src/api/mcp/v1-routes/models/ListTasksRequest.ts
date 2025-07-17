@@ -6,9 +6,8 @@
 
 export interface ListTasksRequest {
   projectId?: string;
-  workspaceId?: string;
   status?: 'TODO' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
-  assigneeId?: string;
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   limit?: number;
   cursor?: string;
 }

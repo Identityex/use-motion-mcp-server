@@ -10,7 +10,6 @@ export interface UpdateTaskRequest {
   description?: string;
   status?: 'TODO' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
   priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
-  assigneeId?: string;
+  duration?: number;
   dueDate?: string;
-  enrich?: boolean;
 }
