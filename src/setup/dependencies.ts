@@ -1,27 +1,27 @@
 // Dependencies Setup
 // Dependency injection configuration following work-stable-api pattern
 
-import { createMotionService } from '../services/motion-service';
-import { createStorageService } from '../services/storage/storage-service';
-import { createAIService } from '../services/ai/ai-service';
-import { AIProviderType } from '../services/ai/providers/provider-factory';
+import {
+    createContextController,
+    createDocsController,
+    createProjectController,
+    createSyncController,
+    createTaskController,
+    createWorkflowController,
+} from '../api/mcp/v1-controllers';
+import { createContextCommands } from '../app/context/context-commands';
+import { createDocsCommands } from '../app/docs/docs-commands';
 import { createMotionCommands } from '../app/motion/motion-commands';
 import { createMotionQueries } from '../app/motion/motion-queries';
 import { createProjectCommands } from '../app/projects/project-commands';
+import { createSyncCommands } from '../app/sync/sync-commands';
 import { createTaskCommands } from '../app/tasks/task-commands';
 import { createTaskQueries } from '../app/tasks/task-queries';
 import { createWorkflowCommands } from '../app/workflow/workflow-commands';
-import { createSyncCommands } from '../app/sync/sync-commands';
-import { createContextCommands } from '../app/context/context-commands';
-import { createDocsCommands } from '../app/docs/docs-commands';
-import {
-  createProjectController,
-  createTaskController,
-  createWorkflowController,
-  createSyncController,
-  createContextController,
-  createDocsController,
-} from '../api/mcp/v1-controllers';
+import { createAIService } from '../services/ai/ai-service';
+import { AIProviderType } from '../services/ai/providers/provider-factory';
+import { createMotionService, MotionService } from '../services/motion-service';
+import { createStorageService } from '../services/storage/storage-service';
 
 // Configuration interface
 export interface Config {
@@ -58,16 +58,16 @@ export interface Dependencies {
     readonly docsCommands: ReturnType<typeof createDocsCommands>;
   };
   readonly services: {
-    readonly motionService: ReturnType<typeof createMotionService>;
+    readonly motionService: MotionService;
     readonly storageService: ReturnType<typeof createStorageService>;
     readonly aiService: ReturnType<typeof createAIService>;
   };
 }
 
 // Create all dependencies with proper wiring
-export function createDependencies(config: Config): Dependencies {
+export async function createDependencies(config: Config): Promise<Dependencies> {
   // Create services
-  const motionService = createMotionService({
+  const motionService = await createMotionService({
     apiKey: config.motion.apiKey,
     baseUrl: config.motion.baseUrl,
     workspaceId: config.motion.workspaceId,

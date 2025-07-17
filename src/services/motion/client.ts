@@ -1,24 +1,20 @@
-import axios, { AxiosInstance, AxiosResponse } from 'axios';
-import PQueue from 'p-queue';
-import pRetry from 'p-retry';
+import axios, { AxiosInstance } from 'axios';
 import {
   MotionWorkspace,
   MotionProject,
   MotionTask,
   MotionUser,
   MotionComment,
-  MotionRecurringTask,
-  MotionStatus,
   CreateProjectRequest,
   CreateTaskRequest,
-  CreateRecurringTaskRequest,
   CreateCommentRequest,
-  ListResponse,
-  MotionApiError,
+  UpdateTaskRequest,
 } from '../../types/motion-api';
-import { UpdateTaskRequest } from '../../types/motion';
-import { createDomainLogger, PerformanceLogger } from '../utils/logger';
-import { rateLimitTracker } from './rate-limiter';
+import { createDomainLogger } from '../utils/logger';
+import { createRateLimitTracker } from './rate-limiter';
+
+// Initialize rate limit tracker
+const rateLimitTracker = createRateLimitTracker();
 
 export interface MotionClientConfig {
   apiKey: string;
@@ -27,293 +23,397 @@ export interface MotionClientConfig {
   timeout?: number;
 }
 
-export class MotionClient {
-  private readonly http: AxiosInstance;
-  private readonly queue: PQueue;
-  private readonly isTeamAccount: boolean;
-  private readonly logger = createDomainLogger('motion-client');
+export interface MotionClient {
+  // Workspace operations
+  getWorkspaces(): Promise<MotionWorkspace[]>;
+  
+  // Project operations
+  getProjects(workspaceId?: string): Promise<MotionProject[]>;
+  createProject(data: CreateProjectRequest): Promise<MotionProject>;
+  updateProject(projectId: string, data: Partial<CreateProjectRequest>): Promise<MotionProject>;
+  deleteProject(projectId: string): Promise<void>;
+  
+  // Task operations
+  getTasks(workspaceId?: string, projectId?: string): Promise<MotionTask[]>;
+  createTask(data: CreateTaskRequest): Promise<MotionTask>;
+  updateTask(taskId: string, data: UpdateTaskRequest): Promise<MotionTask>;
+  deleteTask(taskId: string): Promise<void>;
+  moveTask(taskId: string, projectId: string | null): Promise<MotionTask>;
+  
+  // User operations
+  getUsers(workspaceId?: string): Promise<MotionUser[]>;
+  
+  // Comment operations
+  createComment(params: {
+    content: string;
+    taskId?: string;
+    projectId?: string;
+  }): Promise<MotionComment>;
+  
+  // Queue management
+  getQueueStatus(): Promise<{ waiting: number; pending: number }>;
+  waitForQueue(): Promise<void>;
+}
 
-  constructor(config: MotionClientConfig) {
-    this.isTeamAccount = config.isTeamAccount ?? false;
-    
-    this.logger.info('Initializing Motion client', {
-      isTeamAccount: this.isTeamAccount,
-      baseUrl: config.baseUrl ?? 'https://api.usemotion.com/v1',
-    });
-    
-    this.http = axios.create({
-      baseURL: config.baseUrl ?? 'https://api.usemotion.com/v1',
-      timeout: config.timeout ?? 30000,
-      headers: {
-        'X-API-Key': config.apiKey,
-        'Content-Type': 'application/json',
-      },
-    });
+// Factory function to create MotionClient (FRP pattern)
+export async function createMotionClient(config: MotionClientConfig): Promise<MotionClient> {
+  // Dynamic imports for ESM modules
+  const [{ default: PQueue }, { default: pRetry }] = await Promise.all([
+    import('p-queue'),
+    import('p-retry')
+  ]);
+  
+  const isTeamAccount = config.isTeamAccount ?? false;
+  const logger = createDomainLogger('motion-client');
+  
+  logger.info('Initializing Motion client', {
+    isTeamAccount: isTeamAccount,
+    baseUrl: config.baseUrl ?? 'https://api.usemotion.com/v1',
+  });
+  
+  const http = axios.create({
+    baseURL: config.baseUrl ?? 'https://api.usemotion.com/v1',
+    timeout: config.timeout ?? 30000,
+    headers: {
+      'X-API-Key': config.apiKey,
+      'Content-Type': 'application/json',
+    },
+  });
 
-    const requestsPerMinute = this.isTeamAccount ? 120 : 12;
-    const intervalMs = 60000 / requestsPerMinute;
+  const requestsPerMinute = isTeamAccount ? 120 : 12;
+  const intervalMs = 60000 / requestsPerMinute;
 
-    this.queue = new PQueue({
-      interval: intervalMs,
-      intervalCap: 1,
-      concurrency: 1,
-    });
+  const queue = new PQueue({
+    interval: intervalMs,
+    intervalCap: 1,
+    concurrency: 1,
+  });
 
-    this.setupInterceptors();
-  }
-
-  private setupInterceptors(): void {
-    // Request interceptor for logging
-    this.http.interceptors.request.use(
-      (config) => {
-        this.logger.debug('Motion API request', {
-          method: config.method,
-          url: config.url,
-          params: config.params,
-          // Don't log request body as it might contain sensitive data
-          hasBody: !!config.data,
-        });
-        return config;
-      },
-      (error) => {
-        this.logger.error('Motion API request error', { error: error.message });
-        return Promise.reject(error);
-      }
-    );
-
-    // Response interceptor for error handling and logging
-    this.http.interceptors.response.use(
-      (response) => {
-        this.logger.debug('Motion API response', {
-          method: response.config.method,
-          url: response.config.url,
-          status: response.status,
-          // Don't log response data as it might contain sensitive information
-        });
-        
-        // Track rate limit headers
-        if (response.headers) {
-          const endpoint = response.config.url || '';
-          rateLimitTracker.updateFromHeaders(endpoint, response.headers as any);
-        }
-        
-        return response;
-      },
-      (error) => {
-        if (error.response) {
-          const motionError: MotionApiError = {
-            error: error.response.data?.error || 'Unknown error',
-            message: error.response.data?.message || error.message,
-            statusCode: error.response.status,
-          };
-          
-          this.logger.error('Motion API error response', {
-            method: error.config?.method,
-            url: error.config?.url,
-            status: error.response.status,
-            error: motionError.error,
-            message: motionError.message,
-          });
-          
-          throw motionError;
-        }
-        
-        this.logger.error('Motion API network error', {
-          error: error.message,
-          code: error.code,
-        });
-        
-        throw error;
-      }
-    );
-  }
-
-  private async makeRequest<T>(
-    method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
-    endpoint: string,
-    data?: unknown,
-    params?: Record<string, unknown>
-  ): Promise<T> {
-    const perfLog = new PerformanceLogger(this.logger, `${method} ${endpoint}`);
-    
-    // Check if we should delay due to rate limits
-    const delayInfo = rateLimitTracker.shouldDelay(endpoint);
-    if (delayInfo.delay && delayInfo.waitMs) {
-      this.logger.info('Delaying request due to rate limit', {
-        endpoint,
-        waitMs: delayInfo.waitMs,
+  // Setup interceptors
+  http.interceptors.request.use(
+    (config) => {
+      logger.debug('Motion API request', {
+        method: config.method,
+        url: config.url,
+        params: config.params,
+        // Don't log request body as it might contain sensitive data
+        hasBody: !!config.data,
       });
-      await new Promise(resolve => setTimeout(resolve, delayInfo.waitMs));
+      return config;
+    },
+    (error) => {
+      logger.error('Motion API request error', { error: error.message });
+      return Promise.reject(error);
     }
-    
-    try {
-      const result = await this.queue.add(async () => {
-        return pRetry(
-          async () => {
-            const response: AxiosResponse<T> = await this.http.request({
-              method,
-              url: endpoint,
-              data,
-              params,
-            });
-            return response.data;
-          },
+  );
+
+  // Response interceptor for error handling and logging
+  http.interceptors.response.use(
+    (response) => {
+      logger.debug('Motion API response', {
+        method: response.config.method,
+        url: response.config.url,
+        status: response.status,
+        // Don't log response data as it might contain sensitive information
+      });
+      
+      // Track rate limit headers
+      if (response.headers) {
+        const endpoint = response.config.url || '';
+        rateLimitTracker.updateFromHeaders(endpoint, response.headers as any);
+      }
+      
+      return response;
+    },
+    (error) => {
+      // Enhanced error logging
+      const errorInfo = {
+        status: error.response?.status,
+        message: error.message,
+        url: error.config?.url,
+        method: error.config?.method,
+      };
+      
+      if (error.response?.status === 429) {
+        logger.warn('Rate limit exceeded', errorInfo);
+        // Track rate limit for better handling
+        if (error.response.headers) {
+          const endpoint = error.config?.url || '';
+          rateLimitTracker.updateFromHeaders(endpoint, error.response.headers as any);
+        }
+      } else {
+        logger.error('Motion API response error', errorInfo);
+      }
+      
+      return Promise.reject(error);
+    }
+  );
+
+  // Return the interface implementation
+  return {
+    // Workspace operations
+    async getWorkspaces(): Promise<MotionWorkspace[]> {
+      return (await queue.add(async () => {
+        const response = await pRetry(
+          () => http.get<MotionWorkspace[]>('/workspaces'),
           {
             retries: 3,
             factor: 2,
-            minTimeout: 1000,
-            maxTimeout: 10000,
-            onFailedAttempt: (error) => {
-              if ('statusCode' in error) {
-                const statusCode = (error as any).statusCode;
-                if (statusCode === 429) {
-                  this.logger.warn('Rate limit hit, not retrying', { endpoint });
-                  throw error;
-                }
-                if (statusCode && statusCode >= 500) {
-                  this.logger.warn('Server error, will retry', { endpoint, statusCode });
-                  return;
-              }
-            }
-            throw error;
-          },
-        }
-      );
-    });
-    
-    if (result === undefined) {
-      throw new Error('Queue returned undefined result');
-    }
-    
-    perfLog.end({ queueSize: this.queue.size });
-    return result;
-  } catch (error) {
-    perfLog.error(error);
-    throw error;
-  }
-}
+            onFailedAttempt: (error: any) => {
+              logger.warn('getWorkspaces attempt failed', {
+                attempt: error.attemptNumber,
+                retriesLeft: error.retriesLeft,
+                error: error.message,
+              });
+            },
+          }
+        );
+        return response.data;
+      }))!;
+    },
 
-  async getWorkspaces(): Promise<MotionWorkspace[]> {
-    const response = await this.makeRequest<{ workspaces: MotionWorkspace[] }>('GET', '/workspaces');
-    return response.workspaces;
-  }
+    // Project operations
+    async getProjects(workspaceId?: string): Promise<MotionProject[]> {
+      return (await queue.add(async () => {
+        const params = workspaceId ? { workspaceId } : {};
+        const response = await pRetry(
+          () => http.get<MotionProject[]>('/projects', { params }),
+          {
+            retries: 3,
+            factor: 2,
+            onFailedAttempt: (error: any) => {
+              logger.warn('getProjects attempt failed', {
+                attempt: error.attemptNumber,
+                retriesLeft: error.retriesLeft,
+                error: error.message,
+              });
+            },
+          }
+        );
+        return response.data;
+      }))!;
+    },
 
-  async getWorkspaceStatuses(workspaceId: string): Promise<MotionStatus[]> {
-    const response = await this.makeRequest<{ statuses: MotionStatus[] }>(
-      'GET',
-      `/workspaces/${workspaceId}/statuses`
-    );
-    return response.statuses;
-  }
+    async createProject(data: CreateProjectRequest): Promise<MotionProject> {
+      return (await queue.add(async () => {
+        const response = await pRetry(
+          () => http.post<MotionProject>('/projects', data),
+          {
+            retries: 2,
+            factor: 2,
+            onFailedAttempt: (error: any) => {
+              logger.warn('createProject attempt failed', {
+                attempt: error.attemptNumber,
+                retriesLeft: error.retriesLeft,
+                error: error.message,
+              });
+            },
+          }
+        );
+        return response.data;
+      }))!;
+    },
 
-  async getCurrentUser(): Promise<MotionUser> {
-    return this.makeRequest<MotionUser>('GET', '/users/me');
-  }
+    async updateProject(projectId: string, data: Partial<CreateProjectRequest>): Promise<MotionProject> {
+      return (await queue.add(async () => {
+        const response = await pRetry(
+          () => http.patch<MotionProject>(`/projects/${projectId}`, data),
+          {
+            retries: 2,
+            factor: 2,
+            onFailedAttempt: (error: any) => {
+              logger.warn('updateProject attempt failed', {
+                attempt: error.attemptNumber,
+                retriesLeft: error.retriesLeft,
+                error: error.message,
+              });
+            },
+          }
+        );
+        return response.data;
+      }))!;
+    },
 
-  async getUsers(workspaceId?: string): Promise<MotionUser[]> {
-    const params = workspaceId ? { workspaceId } : undefined;
-    const response = await this.makeRequest<{ users: MotionUser[] }>('GET', '/users', undefined, params);
-    return response.users;
-  }
+    async deleteProject(projectId: string): Promise<void> {
+      await queue.add(async () => {
+        await pRetry(
+          () => http.delete(`/projects/${projectId}`),
+          {
+            retries: 2,
+            factor: 2,
+            onFailedAttempt: (error: any) => {
+              logger.warn('deleteProject attempt failed', {
+                attempt: error.attemptNumber,
+                retriesLeft: error.retriesLeft,
+                error: error.message,
+              });
+            },
+          }
+        );
+      });
+    },
 
-  async listProjects(params?: {
-    workspaceId?: string;
-    limit?: number;
-    cursor?: string;
-  }): Promise<ListResponse<MotionProject>> {
-    return this.makeRequest<ListResponse<MotionProject>>('GET', '/projects', undefined, params);
-  }
+    // Task operations
+    async getTasks(workspaceId?: string, projectId?: string): Promise<MotionTask[]> {
+      return (await queue.add(async () => {
+        const params: any = {};
+        if (workspaceId) params.workspaceId = workspaceId;
+        if (projectId) params.projectId = projectId;
+        
+        const response = await pRetry(
+          () => http.get<MotionTask[]>('/tasks', { params }),
+          {
+            retries: 3,
+            factor: 2,
+            onFailedAttempt: (error: any) => {
+              logger.warn('getTasks attempt failed', {
+                attempt: error.attemptNumber,
+                retriesLeft: error.retriesLeft,
+                error: error.message,
+              });
+            },
+          }
+        );
+        return response.data;
+      }))!;
+    },
 
-  async getProject(projectId: string): Promise<MotionProject> {
-    return this.makeRequest<MotionProject>('GET', `/projects/${projectId}`);
-  }
+    async createTask(data: CreateTaskRequest): Promise<MotionTask> {
+      return (await queue.add(async () => {
+        const response = await pRetry(
+          () => http.post<MotionTask>('/tasks', data),
+          {
+            retries: 2,
+            factor: 2,
+            onFailedAttempt: (error: any) => {
+              logger.warn('createTask attempt failed', {
+                attempt: error.attemptNumber,
+                retriesLeft: error.retriesLeft,
+                error: error.message,
+              });
+            },
+          }
+        );
+        return response.data;
+      }))!;
+    },
 
-  async createProject(project: CreateProjectRequest): Promise<MotionProject> {
-    return this.makeRequest<MotionProject>('POST', '/projects', project);
-  }
+    async updateTask(taskId: string, data: UpdateTaskRequest): Promise<MotionTask> {
+      return (await queue.add(async () => {
+        const response = await pRetry(
+          () => http.patch<MotionTask>(`/tasks/${taskId}`, data),
+          {
+            retries: 2,
+            factor: 2,
+            onFailedAttempt: (error: any) => {
+              logger.warn('updateTask attempt failed', {
+                attempt: error.attemptNumber,
+                retriesLeft: error.retriesLeft,
+                error: error.message,
+              });
+            },
+          }
+        );
+        return response.data;
+      }))!;
+    },
 
-  async listTasks(params?: {
-    workspaceId?: string;
-    projectId?: string;
-    assigneeId?: string;
-    status?: string;
-    limit?: number;
-    cursor?: string;
-  }): Promise<ListResponse<MotionTask>> {
-    return this.makeRequest<ListResponse<MotionTask>>('GET', '/tasks', undefined, params);
-  }
+    async deleteTask(taskId: string): Promise<void> {
+      await queue.add(async () => {
+        await pRetry(
+          () => http.delete(`/tasks/${taskId}`),
+          {
+            retries: 2,
+            factor: 2,
+            onFailedAttempt: (error: any) => {
+              logger.warn('deleteTask attempt failed', {
+                attempt: error.attemptNumber,
+                retriesLeft: error.retriesLeft,
+                error: error.message,
+              });
+            },
+          }
+        );
+      });
+    },
 
-  async getTask(taskId: string): Promise<MotionTask> {
-    return this.makeRequest<MotionTask>('GET', `/tasks/${taskId}`);
-  }
+    async moveTask(taskId: string, projectId: string | null): Promise<MotionTask> {
+      return (await queue.add(async () => {
+        const response = await pRetry(
+          () => http.patch<MotionTask>(`/tasks/${taskId}/move`, { projectId }),
+          {
+            retries: 2,
+            factor: 2,
+            onFailedAttempt: (error: any) => {
+              logger.warn('moveTask attempt failed', {
+                attempt: error.attemptNumber,
+                retriesLeft: error.retriesLeft,
+                error: error.message,
+              });
+            },
+          }
+        );
+        return response.data;
+      }))!;
+    },
 
-  async createTask(task: CreateTaskRequest): Promise<MotionTask> {
-    return this.makeRequest<MotionTask>('POST', '/tasks', task);
-  }
+    // User operations
+    async getUsers(workspaceId?: string): Promise<MotionUser[]> {
+      return (await queue.add(async () => {
+        const params = workspaceId ? { workspaceId } : {};
+        const response = await pRetry(
+          () => http.get<MotionUser[]>('/users', { params }),
+          {
+            retries: 3,
+            factor: 2,
+            onFailedAttempt: (error: any) => {
+              logger.warn('getUsers attempt failed', {
+                attempt: error.attemptNumber,
+                retriesLeft: error.retriesLeft,
+                error: error.message,
+              });
+            },
+          }
+        );
+        return response.data;
+      }))!;
+    },
 
-  async updateTask(taskId: string, updates: UpdateTaskRequest): Promise<MotionTask> {
-    return this.makeRequest<MotionTask>('PATCH', `/tasks/${taskId}`, updates);
-  }
+    // Comment operations
+    async createComment(params: {
+      content: string;
+      taskId?: string;
+      projectId?: string;
+    }): Promise<MotionComment> {
+      return (await queue.add(async () => {
+        const response = await pRetry(
+          () => http.post<MotionComment>('/comments', params),
+          {
+            retries: 2,
+            factor: 2,
+            onFailedAttempt: (error: any) => {
+              logger.warn('createComment attempt failed', {
+                attempt: error.attemptNumber,
+                retriesLeft: error.retriesLeft,
+                error: error.message,
+              });
+            },
+          }
+        );
+        return response.data;
+      }))!;
+    },
 
-  async deleteTask(taskId: string): Promise<void> {
-    await this.makeRequest<void>('DELETE', `/tasks/${taskId}`);
-  }
+    // Queue management
+    async getQueueStatus(): Promise<{ waiting: number; pending: number }> {
+      return {
+        waiting: queue.size,
+        pending: queue.pending,
+      };
+    },
 
-  async moveTask(taskId: string, projectId: string | null): Promise<MotionTask> {
-    return this.makeRequest<MotionTask>('PATCH', `/tasks/${taskId}/move`, { projectId });
-  }
-
-  async unassignTask(taskId: string): Promise<MotionTask> {
-    return this.makeRequest<MotionTask>('PATCH', `/tasks/${taskId}/unassign`);
-  }
-
-  async listRecurringTasks(params?: {
-    workspaceId?: string;
-    limit?: number;
-    cursor?: string;
-  }): Promise<ListResponse<MotionRecurringTask>> {
-    return this.makeRequest<ListResponse<MotionRecurringTask>>('GET', '/recurring-tasks', undefined, params);
-  }
-
-  async getRecurringTask(recurringTaskId: string): Promise<MotionRecurringTask> {
-    return this.makeRequest<MotionRecurringTask>('GET', `/recurring-tasks/${recurringTaskId}`);
-  }
-
-  async createRecurringTask(recurringTask: CreateRecurringTaskRequest): Promise<MotionRecurringTask> {
-    return this.makeRequest<MotionRecurringTask>('POST', '/recurring-tasks', recurringTask);
-  }
-
-  async deleteRecurringTask(recurringTaskId: string): Promise<void> {
-    await this.makeRequest<void>('DELETE', `/recurring-tasks/${recurringTaskId}`);
-  }
-
-  async listComments(params: { taskId?: string; projectId?: string }): Promise<MotionComment[]> {
-    const response = await this.makeRequest<{ comments: MotionComment[] }>('GET', '/comments', undefined, params);
-    return response.comments;
-  }
-
-  async createComment(comment: CreateCommentRequest): Promise<MotionComment> {
-    return this.makeRequest<MotionComment>('POST', '/comments', comment);
-  }
-
-  async getQueueStatus(): Promise<{ waiting: number; pending: number }> {
-    return {
-      waiting: this.queue.size,
-      pending: this.queue.pending,
-    };
-  }
-
-  async waitForQueue(): Promise<void> {
-    await this.queue.onIdle();
-  }
-
-  async getRateLimitStatus(): Promise<{
-    queueStatus: { waiting: number; pending: number };
-    rateLimits: Record<string, { percentUsed: number; remaining: number; resetIn: number }>;
-  }> {
-    return {
-      queueStatus: await this.getQueueStatus(),
-      rateLimits: rateLimitTracker.getSummary(),
-    };
-  }
+    async waitForQueue(): Promise<void> {
+      await queue.onEmpty();
+    },
+  };
 }

@@ -1,7 +1,7 @@
 // Secure logging utility
 // Provides structured logging with automatic secret sanitization
 
-import { sanitizeForLog } from '../validation/validators';
+import { sanitizeForLog } from '../validation/validators.js';
 
 export enum LogLevel {
   ERROR = 0,

@@ -3,8 +3,8 @@
 
 import { TaskCommands } from '../../../app/tasks/task-commands';
 import { TaskQueries } from '../../../app/tasks/task-queries';
-import { TaskController } from '../v1-routes/routes/TaskControllerRoutes';
 import { wrapController } from '../../../services/utils/error-handler';
+import { TaskController } from '../v1-routes/routes/TaskControllerRoutes';
 
 export function createTaskController(deps: {
   readonly app: {

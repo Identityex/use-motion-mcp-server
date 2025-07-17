@@ -2,7 +2,6 @@
   "name": "motion-mcp-server",
   "version": "1.0.0",
   "description": "A Model Context Protocol (MCP) server for integrating with Motion task management platform",
-  "type": "module",
   "main": "dist/server/index.js",
   "bin": {
     "motion-mcp-server": "dist/server/index.js"

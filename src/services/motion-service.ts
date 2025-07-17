@@ -1,7 +1,7 @@
 // Motion Service
 // Simplified service that directly uses the Motion API client
 
-import { MotionClient } from './motion/client';
+import { createMotionClient, MotionClient } from './motion/client';
 import {
   MotionProject,
   MotionTask,
@@ -21,71 +21,28 @@ export interface MotionServiceConfig {
   readonly isTeamAccount?: boolean;
 }
 
-export class MotionService {
-  private readonly client: MotionClient;
-  private readonly defaultWorkspaceId?: string;
-
-  constructor(config: MotionServiceConfig) {
-    this.client = new MotionClient({
-      apiKey: config.apiKey,
-      baseUrl: config.baseUrl,
-      isTeamAccount: config.isTeamAccount,
-    });
-    this.defaultWorkspaceId = config.workspaceId;
-  }
-
+export interface MotionService {
   // Workspace operations
-  async listWorkspaces(): Promise<MotionWorkspace[]> {
-    return this.client.getWorkspaces();
-  }
-
+  listWorkspaces(): Promise<MotionWorkspace[]>;
+  
   // Project operations
-  async listProjects(params?: {
+  listProjects(params?: {
     workspaceId?: string;
     projectId?: string;
     limit?: number;
     cursor?: string;
-  }): Promise<MotionProject[]> {
-    // If looking for a specific project by ID, filter after fetching
-    const response = await this.client.listProjects({
-      workspaceId: params?.workspaceId || this.defaultWorkspaceId,
-      limit: params?.limit || 100,
-      cursor: params?.cursor,
-    });
-    
-    if (params?.projectId) {
-      return response.data.filter(p => p.id === params.projectId);
-    }
-    
-    return response.data;
-  }
-
-  async listProjectsWithPagination(params?: {
+  }): Promise<MotionProject[]>;
+  
+  listProjectsWithPagination(params?: {
     workspaceId?: string;
     limit?: number;
     cursor?: string;
-  }): Promise<{ projects: MotionProject[]; nextCursor?: string }> {
-    const response = await this.client.listProjects({
-      workspaceId: params?.workspaceId || this.defaultWorkspaceId,
-      limit: params?.limit || 100,
-      cursor: params?.cursor,
-    });
-    
-    return {
-      projects: response.data,
-      nextCursor: response.cursor,
-    };
-  }
-
-  async createProject(params: CreateProjectRequest): Promise<MotionProject> {
-    return this.client.createProject({
-      ...params,
-      workspaceId: params.workspaceId || this.defaultWorkspaceId,
-    });
-  }
-
+  }): Promise<{ projects: MotionProject[]; nextCursor?: string }>;
+  
+  createProject(params: CreateProjectRequest): Promise<MotionProject>;
+  
   // Task operations
-  async listTasks(params?: {
+  listTasks(params?: {
     workspaceId?: string;
     projectId?: string;
     taskId?: string;
@@ -93,97 +50,191 @@ export class MotionService {
     status?: string;
     limit?: number;
     cursor?: string;
-  }): Promise<MotionTask[]> {
-    // If looking for a specific task by ID, filter after fetching
-    const response = await this.client.listTasks({
-      workspaceId: params?.workspaceId || this.defaultWorkspaceId,
-      projectId: params?.projectId,
-      assigneeId: params?.assigneeId,
-      status: params?.status,
-      limit: params?.limit || 100,
-      cursor: params?.cursor,
-    });
-    
-    if (params?.taskId) {
-      return response.data.filter(t => t.id === params.taskId);
-    }
-    
-    return response.data;
-  }
-
-  async listTasksWithPagination(params?: {
+  }): Promise<MotionTask[]>;
+  
+  listTasksWithPagination(params?: {
     workspaceId?: string;
     projectId?: string;
     assigneeId?: string;
     status?: string;
     limit?: number;
     cursor?: string;
-  }): Promise<{ tasks: MotionTask[]; nextCursor?: string }> {
-    const response = await this.client.listTasks({
-      workspaceId: params?.workspaceId || this.defaultWorkspaceId,
-      projectId: params?.projectId,
-      assigneeId: params?.assigneeId,
-      status: params?.status,
-      limit: params?.limit || 100,
-      cursor: params?.cursor,
-    });
-    
-    return {
-      tasks: response.data,
-      nextCursor: response.cursor,
-    };
-  }
-
-  async createTask(params: CreateTaskRequest): Promise<MotionTask> {
-    return this.client.createTask(params);
-  }
-
-  async updateTask(params: MCPUpdateTaskRequest): Promise<MotionTask> {
-    const { taskId, ...updates } = params;
-    return this.client.updateTask(taskId, updates as MotionUpdateTaskRequest);
-  }
-
-  async deleteTask(taskId: string): Promise<void> {
-    return this.client.deleteTask(taskId);
-  }
-
-  async moveTask(taskId: string, projectId: string | null): Promise<MotionTask> {
-    return this.client.moveTask(taskId, projectId);
-  }
-
+  }): Promise<{ tasks: MotionTask[]; nextCursor?: string }>;
+  
+  createTask(params: CreateTaskRequest): Promise<MotionTask>;
+  updateTask(params: MCPUpdateTaskRequest): Promise<MotionTask>;
+  deleteTask(taskId: string): Promise<void>;
+  moveTask(taskId: string, projectId: string | null): Promise<MotionTask>;
+  
   // User operations
-  async getCurrentUser(): Promise<MotionUser> {
-    return this.client.getCurrentUser();
-  }
-
-  async listUsers(workspaceId?: string): Promise<MotionUser[]> {
-    return this.client.getUsers(workspaceId || this.defaultWorkspaceId);
-  }
-
+  getCurrentUser(): Promise<MotionUser>;
+  listUsers(workspaceId?: string): Promise<MotionUser[]>;
+  
   // Comment operations
-  async listComments(params: { taskId?: string; projectId?: string }): Promise<MotionComment[]> {
-    return this.client.listComments(params);
-  }
-
-  async createComment(params: {
+  listComments(params: { taskId?: string; projectId?: string }): Promise<MotionComment[]>;
+  createComment(params: {
     content: string;
     taskId?: string;
     projectId?: string;
-  }): Promise<MotionComment> {
-    return this.client.createComment(params);
-  }
-
+  }): Promise<MotionComment>;
+  
   // Queue management
-  async getQueueStatus(): Promise<{ waiting: number; pending: number }> {
-    return this.client.getQueueStatus();
-  }
-
-  async waitForQueue(): Promise<void> {
-    return this.client.waitForQueue();
-  }
+  getQueueStatus(): Promise<{ waiting: number; pending: number }>;
+  waitForQueue(): Promise<void>;
 }
 
-// Factory function for dependency injection
-export function createMotionService(config: MotionServiceConfig): MotionService {
-  return new MotionService(config);
+// Factory function for dependency injection (FRP pattern)
+export async function createMotionService(config: MotionServiceConfig): Promise<MotionService> {
+  const client = await createMotionClient({
+    apiKey: config.apiKey,
+    baseUrl: config.baseUrl,
+    isTeamAccount: config.isTeamAccount,
+  });
+  
+  const defaultWorkspaceId = config.workspaceId;
+  
+  return {
+    // Workspace operations
+    async listWorkspaces(): Promise<MotionWorkspace[]> {
+      return client.getWorkspaces();
+    },
+
+    // Project operations
+    async listProjects(params?: {
+      workspaceId?: string;
+      projectId?: string;
+      limit?: number;
+      cursor?: string;
+    }): Promise<MotionProject[]> {
+      // If looking for a specific project by ID, filter after fetching
+      const projects = await client.getProjects(
+        params?.workspaceId || defaultWorkspaceId
+      );
+      
+      if (params?.projectId) {
+        return projects.filter((p: any) => p.id === params.projectId);
+      }
+      
+      return projects;
+    },
+
+    async listProjectsWithPagination(params?: {
+      workspaceId?: string;
+      limit?: number;
+      cursor?: string;
+    }): Promise<{ projects: MotionProject[]; nextCursor?: string }> {
+      const projects = await client.getProjects(
+        params?.workspaceId || defaultWorkspaceId
+      );
+      
+      return {
+        projects: projects,
+        nextCursor: undefined, // Simple client doesn't support pagination
+      };
+    },
+
+    async createProject(params: CreateProjectRequest): Promise<MotionProject> {
+      return client.createProject({
+        ...params,
+        workspaceId: params.workspaceId || defaultWorkspaceId,
+      });
+    },
+
+    // Task operations
+    async listTasks(params?: {
+      workspaceId?: string;
+      projectId?: string;
+      taskId?: string;
+      assigneeId?: string;
+      status?: string;
+      limit?: number;
+      cursor?: string;
+    }): Promise<MotionTask[]> {
+      // If looking for a specific task by ID, filter after fetching
+      const tasks = await client.getTasks(
+        params?.workspaceId || defaultWorkspaceId,
+        params?.projectId
+      );
+      
+      let filteredTasks = tasks;
+      
+      if (params?.taskId) {
+        filteredTasks = tasks.filter((t: any) => t.id === params.taskId);
+      }
+      
+      return filteredTasks;
+    },
+
+    async listTasksWithPagination(params?: {
+      workspaceId?: string;
+      projectId?: string;
+      assigneeId?: string;
+      status?: string;
+      limit?: number;
+      cursor?: string;
+    }): Promise<{ tasks: MotionTask[]; nextCursor?: string }> {
+      const tasks = await client.getTasks(
+        params?.workspaceId || defaultWorkspaceId,
+        params?.projectId
+      );
+      
+      return {
+        tasks: tasks,
+        nextCursor: undefined, // Simple client doesn't support pagination
+      };
+    },
+
+    async createTask(params: CreateTaskRequest): Promise<MotionTask> {
+      return client.createTask(params);
+    },
+
+    async updateTask(params: MCPUpdateTaskRequest): Promise<MotionTask> {
+      const { taskId, ...updates } = params;
+      return client.updateTask(taskId, updates as any);
+    },
+
+    async deleteTask(taskId: string): Promise<void> {
+      return client.deleteTask(taskId);
+    },
+
+    async moveTask(taskId: string, projectId: string | null): Promise<MotionTask> {
+      return client.moveTask(taskId, projectId);
+    },
+
+    // User operations
+    async getCurrentUser(): Promise<MotionUser> {
+      const users = await client.getUsers();
+      if (users.length === 0) {
+        throw new Error('No users found');
+      }
+      return users[0]!; // Return first user as current user
+    },
+
+    async listUsers(workspaceId?: string): Promise<MotionUser[]> {
+      return client.getUsers(workspaceId || defaultWorkspaceId);
+    },
+
+    // Comment operations
+    async listComments(_params: { taskId?: string; projectId?: string }): Promise<MotionComment[]> {
+      // Comments listing not implemented in simple client
+      return [];
+    },
+
+    async createComment(params: {
+      content: string;
+      taskId?: string;
+      projectId?: string;
+    }): Promise<MotionComment> {
+      return client.createComment(params);
+    },
+
+    // Queue management
+    async getQueueStatus(): Promise<{ waiting: number; pending: number }> {
+      return client.getQueueStatus();
+    },
+
+    async waitForQueue(): Promise<void> {
+      return client.waitForQueue();
+    },
+  };
 }

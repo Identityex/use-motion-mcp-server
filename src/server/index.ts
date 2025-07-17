@@ -6,18 +6,18 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
-  CallToolRequestSchema,
-  ErrorCode,
-  ListToolsRequestSchema,
-  McpError,
+    CallToolRequestSchema,
+    ErrorCode,
+    ListToolsRequestSchema,
+    McpError,
 } from '@modelcontextprotocol/sdk/types.js';
 
-import { createDependencies, Config } from '../setup/dependencies';
-import { MCPTools } from '../api/mcp/v1-routes/tools';
-import { MCPToolResponse } from '../api/mcp/v1-routes/models';
-import * as schemas from '../services/validation/request-schemas';
 import { z } from 'zod';
-import { logger, createRequestLogger } from '../services/utils/logger';
+import { MCPToolResponse } from '../api/mcp/v1-routes/models/index.js';
+import { MCPTools } from '../api/mcp/v1-routes/tools.js';
+import { createRequestLogger, logger } from '../services/utils/logger.js';
+import * as schemas from '../services/validation/request-schemas.js';
+import { Config, createDependencies } from '../setup/dependencies.js';
 
 // Load environment configuration
 import * as dotenv from 'dotenv';
@@ -44,20 +44,11 @@ function loadConfig(): Config {
 
 class MotionMCPServer {
   private readonly server: Server;
-  private readonly dependencies: ReturnType<typeof createDependencies>;
+  private dependencies?: Awaited<ReturnType<typeof createDependencies>>;
 
   constructor() {
     logger.info('Starting Motion MCP Server');
     
-    const config = loadConfig();
-    logger.info('Configuration loaded', {
-      hasMotionApiKey: !!config.motion.apiKey,
-      hasAIKey: !!(config.ai && config.ai.apiKey),
-    });
-
-    // Create all dependencies with proper wiring
-    this.dependencies = createDependencies(config);
-
     // Initialize MCP server
     this.server = new Server(
       {
@@ -70,10 +61,22 @@ class MotionMCPServer {
         },
       }
     );
+  }
+
+  async initialize(): Promise<void> {
+    const config = loadConfig();
+    logger.info('Configuration loaded', {
+      hasMotionApiKey: !!config.motion.apiKey,
+      hasAIKey: !!(config.ai && config.ai.apiKey),
+    });
+
+    // Create all dependencies with proper wiring
+    this.dependencies = await createDependencies(config);
 
     this.setupHandlers();
     logger.info('Server initialized successfully');
   }
+
 
   private setupHandlers(): void {
     // List tools handler
@@ -86,6 +89,11 @@ class MotionMCPServer {
     // Call tool handler
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
       const { name, arguments: args } = request.params;
+      
+      if (!this.dependencies) {
+        throw new McpError(ErrorCode.InternalError, 'Server not properly initialized');
+      }
+      
       const controllers = this.dependencies.controllers;
       
       // Generate request ID for tracking
@@ -244,8 +252,13 @@ class MotionMCPServer {
 }
 
 // Main entry point
-const server = new MotionMCPServer();
-server.run().catch((error) => {
+async function main() {
+  const server = new MotionMCPServer();
+  await server.initialize();
+  await server.run();
+}
+
+main().catch((error) => {
   logger.error('Fatal error', {
     error: error instanceof Error ? {
       name: error.name,

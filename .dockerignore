@@ -49,8 +49,7 @@ Dockerfile*
 docker-compose*.yml
 .dockerignore
 
-# Development files
-tsconfig.json
+# Development files (keep tsconfig.json for build)
 eslint.config.js
 jest.config.js
 .prettierrc
