@@ -5,9 +5,8 @@
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import * as http from 'http';
-import * as url from 'url';
 import {
     CallToolRequestSchema,
     ErrorCode,
@@ -279,94 +278,82 @@ class MotionMCPServer {
       const port = parseInt(process.env.MCP_PORT || '4000');
       const host = process.env.MCP_HOST || '0.0.0.0';
       
+      // Create HTTP server
       const httpServer = http.createServer();
-      const transports = new Map<string, SSEServerTransport>();
+      
+      // Create a single transport instance for stateless operation
+      const transport = new StreamableHTTPServerTransport({
+        // Use stateless mode for simpler client connections
+        sessionIdGenerator: undefined,
+        enableJsonResponse: true, // Enable JSON responses for simpler request/response
+      });
+      
+      // Connect the transport to the MCP server once
+      await this.server.connect(transport);
+      logger.info('StreamableHTTP transport connected to MCP server');
 
       httpServer.on('request', async (req, res) => {
-        const parsedUrl = url.parse(req.url || '', true);
+        logger.info(`Received ${req.method} request to ${req.url}`);
         
-        if (req.method === 'GET' && parsedUrl.pathname === '/sse') {
-          logger.info('Received GET request to /sse - establishing SSE connection');
+        // Set CORS headers for browser-based clients
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-mcp-session-id');
+        
+        // Handle OPTIONS for CORS preflight
+        if (req.method === 'OPTIONS') {
+          res.writeHead(200);
+          res.end();
+          return;
+        }
+        
+        // Parse request body for POST requests
+        let body = '';
+        if (req.method === 'POST') {
+          req.on('data', chunk => {
+            body += chunk.toString();
+          });
           
-          try {
-            // Create a new SSE transport - the first parameter is the POST endpoint path
-            const transport = new SSEServerTransport('/messages', res);
-            transports.set(transport.sessionId, transport);
-            
-            // Set up cleanup when connection closes
-            transport.onclose = () => {
-              logger.info(`SSE transport closed for session ${transport.sessionId}`);
-              transports.delete(transport.sessionId);
-            };
-            
-            // Connect the transport to the MCP server
-            // This will automatically call transport.start() which sets up SSE headers
-            await this.server.connect(transport);
-            
-            logger.info(`Established SSE stream with session ID: ${transport.sessionId}`);
-          } catch (error) {
-            logger.error('Error establishing SSE stream', { error });
-            if (!res.headersSent) {
-              res.writeHead(500).end('Error establishing SSE stream');
-            }
+          await new Promise<void>((resolve) => {
+            req.on('end', () => resolve());
+          });
+        }
+        
+        try {
+          // Parse JSON body if present
+          const parsedBody = body ? JSON.parse(body) : undefined;
+          
+          // Handle the request with the transport
+          await transport.handleRequest(req, res, parsedBody);
+        } catch (error) {
+          logger.error('Error handling request', { 
+            error: error instanceof Error ? error.message : String(error),
+            method: req.method,
+            url: req.url
+          });
+          
+          if (!res.headersSent) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ 
+              error: 'Internal server error',
+              message: error instanceof Error ? error.message : String(error)
+            }));
           }
-          
-        } else if (req.method === 'POST' && parsedUrl.pathname === '/messages') {
-          logger.info('Received POST request to /messages');
-          
-          // Extract session ID from query parameter
-          const sessionId = parsedUrl.query.sessionId as string;
-          
-          if (!sessionId) {
-            logger.error('No session ID provided in request URL');
-            res.writeHead(400).end('Missing sessionId parameter');
-            return;
-          }
-          
-          const transport = transports.get(sessionId);
-          if (!transport) {
-            logger.error(`No active transport found for session ID: ${sessionId}`);
-            res.writeHead(404).end('Session not found');
-            return;
-          }
-          
-          try {
-            // Handle the POST message with the transport
-            await transport.handlePostMessage(req, res);
-          } catch (error) {
-            logger.error('Error handling request', { error });
-            if (!res.headersSent) {
-              res.writeHead(500).end('Error handling request');
-            }
-          }
-          
-        } else {
-          res.writeHead(404).end('Not found');
         }
       });
 
       httpServer.listen(port, host, () => {
-        logger.info(`Motion MCP Server running on HTTP/SSE transport at ${host}:${port}`);
-        logger.info('SSE endpoints:');
-        logger.info(`  GET  http://${host}:${port}/sse - Establish SSE connection`);
-        logger.info(`  POST http://${host}:${port}/messages?sessionId=<id> - Send messages`);
+        logger.info(`Motion MCP Server running on HTTP transport at ${host}:${port}`);
+        logger.info('HTTP endpoints:');
+        logger.info(`  POST http://${host}:${port}/ - Send JSON-RPC messages`);
+        logger.info(`  GET  http://${host}:${port}/ - Establish SSE stream (optional)`);
+        logger.info('Running in stateless mode - no session management required');
       });
       
       // Handle graceful shutdown
       process.on('SIGINT', async () => {
         logger.info('Shutting down HTTP server...');
-        
-        // Close all active transports
-        for (const [sessionId, transport] of transports) {
-          try {
-            logger.info(`Closing transport for session ${sessionId}`);
-            await transport.close();
-          } catch (error) {
-            logger.error(`Error closing transport for session ${sessionId}`, { error });
-          }
-        }
-        
-        transports.clear();
+        await transport.close();
         httpServer.close();
         process.exit(0);
       });
