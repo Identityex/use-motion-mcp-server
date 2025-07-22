@@ -3,7 +3,7 @@
 
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { createDomainLogger } from './logger';
+import { createDomainLogger } from './logger.js';
 
 export interface LockOptions {
   ttl?: number; // Time to live in milliseconds

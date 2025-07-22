@@ -8,20 +8,23 @@ import {
     createSyncController,
     createTaskController,
     createWorkflowController,
-} from '../api/mcp/v1-controllers';
-import { createContextCommands } from '../app/context/context-commands';
-import { createDocsCommands } from '../app/docs/docs-commands';
-import { createMotionCommands } from '../app/motion/motion-commands';
-import { createMotionQueries } from '../app/motion/motion-queries';
-import { createProjectCommands } from '../app/projects/project-commands';
-import { createSyncCommands } from '../app/sync/sync-commands';
-import { createTaskCommands } from '../app/tasks/task-commands';
-import { createTaskQueries } from '../app/tasks/task-queries';
-import { createWorkflowCommands } from '../app/workflow/workflow-commands';
-import { createAIService } from '../services/ai/ai-service';
-import { AIProviderType } from '../services/ai/providers/provider-factory';
-import { createMotionService, MotionService } from '../services/motion-service';
-import { createStorageService } from '../services/storage/storage-service';
+    createWorkspaceController,
+} from '../api/mcp/v1-controllers/index.js';
+import { createContextCommands } from '../app/context/context-commands.js';
+import { createDocsCommands } from '../app/docs/docs-commands.js';
+import { createMotionCommands } from '../app/motion/motion-commands.js';
+import { createMotionQueries } from '../app/motion/motion-queries.js';
+import { createProjectCommands } from '../app/projects/project-commands.js';
+import { createSyncCommands } from '../app/sync/sync-commands.js';
+import { createTaskCommands } from '../app/tasks/task-commands.js';
+import { createTaskQueries } from '../app/tasks/task-queries.js';
+import { createWorkflowCommands } from '../app/workflow/workflow-commands.js';
+import { createWorkspaceCommands } from '../app/workspace/workspace-commands.js';
+import { createWorkspaceQueries } from '../app/workspace/workspace-queries.js';
+import { createAIService } from '../services/ai/ai-service.js';
+import { AIProviderType } from '../services/ai/providers/provider-factory.js';
+import { createMotionService, MotionService } from '../services/motion-service.js';
+import { createStorageService } from '../services/storage/storage-service.js';
 
 // Configuration interface
 export interface Config {
@@ -45,6 +48,7 @@ export interface Dependencies {
     readonly syncController: ReturnType<typeof createSyncController>;
     readonly contextController: ReturnType<typeof createContextController>;
     readonly docsController: ReturnType<typeof createDocsController>;
+    readonly workspaceController: ReturnType<typeof createWorkspaceController>;
   };
   readonly app: {
     readonly motionCommands: ReturnType<typeof createMotionCommands>;
@@ -56,6 +60,8 @@ export interface Dependencies {
     readonly syncCommands: ReturnType<typeof createSyncCommands>;
     readonly contextCommands: ReturnType<typeof createContextCommands>;
     readonly docsCommands: ReturnType<typeof createDocsCommands>;
+    readonly workspaceCommands: ReturnType<typeof createWorkspaceCommands>;
+    readonly workspaceQueries: ReturnType<typeof createWorkspaceQueries>;
   };
   readonly services: {
     readonly motionService: MotionService;
@@ -99,6 +105,8 @@ export async function createDependencies(config: Config): Promise<Dependencies> 
   const syncCommands = createSyncCommands({ services });
   const contextCommands = createContextCommands({ services });
   const docsCommands = createDocsCommands({ services });
+  const workspaceCommands = createWorkspaceCommands({ storageService, baseDir: '.claude/motion' });
+  const workspaceQueries = createWorkspaceQueries({ motionService, storageService, baseDir: '.claude/motion' });
   
   const app = { 
     motionCommands, 
@@ -109,7 +117,9 @@ export async function createDependencies(config: Config): Promise<Dependencies> 
     workflowCommands,
     syncCommands,
     contextCommands,
-    docsCommands
+    docsCommands,
+    workspaceCommands,
+    workspaceQueries
   };
 
   // Create controllers
@@ -120,6 +130,13 @@ export async function createDependencies(config: Config): Promise<Dependencies> 
   const contextController = createContextController({ app });
   const docsController = createDocsController({ app });
   
+  const workspaceController = createWorkspaceController({
+    listWorkspacesCommand: workspaceQueries.listWorkspaces,
+    setDefaultWorkspaceCommand: workspaceCommands.setDefaultWorkspace,
+    getWorkspaceSettingsQuery: workspaceQueries.getWorkspaceSettings,
+    updateWorkspaceSettingsCommand: workspaceCommands.updateWorkspaceSettings,
+  });
+  
   const controllers = { 
     projectController,
     taskController,
@@ -127,6 +144,7 @@ export async function createDependencies(config: Config): Promise<Dependencies> 
     syncController,
     contextController,
     docsController,
+    workspaceController,
   };
 
   return {

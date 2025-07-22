@@ -7,9 +7,9 @@ import matter from 'gray-matter';
 import { 
   MotionProject, 
   MotionTask
-} from '../../api/mcp/v1-routes/models';
-import { motionStatusToString, mapTaskForMCP } from '../utils/type-mappers';
-import { validateProjectId, validateTaskId, validateFileName } from '../validation/validators';
+} from '../../api/mcp/v1-routes/models/index.js';
+import { motionStatusToString, mapTaskForMCP } from '../utils/type-mappers.js';
+import { validateProjectId, validateTaskId, validateFileName } from '../validation/validators.js';
 
 export interface StorageConfig {
   readonly baseDir: string;

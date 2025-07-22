@@ -2,7 +2,7 @@
 // Types used by the Motion API client
 
 // Re-export generated types
-export * from '../api/mcp/v1-routes/models';
+export * from '../api/mcp/v1-routes/models/index.js';
 
 // Additional Motion-specific types
 export interface ListResponse<T> {

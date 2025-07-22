@@ -1,10 +1,10 @@
 // Project Controller
 // MCP tool handlers for Project domain operations
 
-import { MotionCommands } from '../../../app/motion/motion-commands';
-import { MotionQueries } from '../../../app/motion/motion-queries';
-import { ProjectCommands } from '../../../app/projects/project-commands';
-import { ProjectController } from '../v1-routes/routes/ProjectControllerRoutes';
+import { MotionCommands } from '../../../app/motion/motion-commands.js';
+import { MotionQueries } from '../../../app/motion/motion-queries.js';
+import { ProjectCommands } from '../../../app/projects/project-commands.js';
+import { ProjectController } from '../v1-routes/routes/ProjectControllerRoutes.js';
 
 export function createProjectController(deps: {
   readonly app: {

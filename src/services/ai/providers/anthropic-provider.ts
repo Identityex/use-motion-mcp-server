@@ -3,7 +3,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
-import { BaseAIProvider, ChatMessage, GenerationOptions, AIProviderConfig } from './base-provider';
+import { BaseAIProvider, ChatMessage, GenerationOptions, AIProviderConfig } from './base-provider.js';
 
 export class AnthropicProvider extends BaseAIProvider {
   private client: Anthropic | null = null;

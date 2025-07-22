@@ -1,8 +1,8 @@
 // Docs Controller
 // MCP tool handlers for Docs domain operations
 
-import { DocsCommands } from '../../../app/docs/docs-commands';
-import { DocsController } from '../v1-routes/routes/DocsControllerRoutes';
+import { DocsCommands } from '../../../app/docs/docs-commands.js';
+import { DocsController } from '../v1-routes/routes/DocsControllerRoutes.js';
 
 export function createDocsController(deps: {
   readonly app: {

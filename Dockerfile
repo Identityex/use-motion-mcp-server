@@ -42,6 +42,7 @@ WORKDIR /app
 # Install runtime dependencies only
 RUN apk add --no-cache \
     dumb-init \
+    wget \
     && rm -rf /var/cache/apk/*
 
 # Copy built application from builder stage
@@ -59,13 +60,20 @@ USER motion
 # Set environment variables
 ENV NODE_ENV=production
 ENV CLAUDE_DATA_DIR=/app/.claude/motion
+ENV MCP_TRANSPORT=http
+ENV MCP_PORT=4000
+ENV MCP_HOST=0.0.0.0
 
-# Expose port (if needed for health checks)
-EXPOSE 3000
+# Expose port for HTTP transport
+EXPOSE 4000
 
 # Add health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD node -e "console.log('Health check passed')" || exit 1
+    CMD if [ "$MCP_TRANSPORT" = "http" ]; then \
+          wget --no-verbose --tries=1 --spider http://localhost:${MCP_PORT}/ || exit 1; \
+        else \
+          node -e "console.log('Health check passed for stdio mode')" || exit 1; \
+        fi
 
 # Use dumb-init for proper signal handling
 ENTRYPOINT ["dumb-init", "--"]

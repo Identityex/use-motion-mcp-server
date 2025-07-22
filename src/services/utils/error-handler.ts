@@ -1,8 +1,8 @@
 // Centralized error handling utilities
 // Provides consistent error formatting and security
 
-import { MCPToolResponse } from '../../api/mcp/v1-routes/models';
-import { sanitizeForLog } from '../validation/validators';
+import { MCPToolResponse } from '../../api/mcp/v1-routes/models/index.js';
+import { sanitizeForLog } from '../validation/validators.js';
 import { z } from 'zod';
 
 // Error types
@@ -97,12 +97,31 @@ export function handleControllerError(error: unknown): MCPToolResponse {
 // Sanitize error for logging (remove sensitive data)
 function sanitizeError(error: unknown): unknown {
   if (error instanceof Error) {
-    return {
+    const basicError = {
       name: error.name,
       message: sanitizeForLog(error.message),
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
       type: error instanceof AppError ? error.type : 'UNKNOWN',
     };
+    
+    // Add axios error details if present
+    const axiosError = error as any;
+    if (axiosError.response) {
+      return {
+        ...basicError,
+        axiosError: {
+          status: axiosError.response.status,
+          statusText: axiosError.response.statusText,
+          data: typeof axiosError.response.data === 'string' 
+            ? axiosError.response.data.substring(0, 200) 
+            : axiosError.response.data,
+          url: axiosError.config?.url,
+          method: axiosError.config?.method,
+        }
+      };
+    }
+    
+    return basicError;
   }
   return { error: sanitizeForLog(String(error)) };
 }
@@ -140,7 +159,27 @@ function formatErrorResponse(error: unknown): string {
     return `Validation error: ${issues}`;
   }
   
-  // Handle Motion API errors
+  // Handle Motion API errors (axios errors have response.status)
+  if (error && typeof error === 'object' && 'response' in error) {
+    const axiosError = error as any;
+    const status = axiosError.response?.status;
+    const message = axiosError.response?.data?.message || axiosError.message;
+    
+    if (status === 429) {
+      return 'Motion API rate limit exceeded. Please try again later.';
+    }
+    if (status === 401) {
+      return 'Motion API authentication failed. Please check your API key.';
+    }
+    if (status === 404) {
+      return 'Resource not found in Motion.';
+    }
+    if (status) {
+      return `Motion API error (${status}): ${message || 'Unknown error'}`;
+    }
+  }
+  
+  // Handle Motion API errors (direct statusCode format)
   if (error && typeof error === 'object' && 'statusCode' in error) {
     const apiError = error as any;
     if (apiError.statusCode === 429) {
@@ -155,13 +194,27 @@ function formatErrorResponse(error: unknown): string {
     return `Motion API error: ${apiError.message || 'Unknown error'}`;
   }
   
-  // Generic error handling
+  // TEMPORARY: Return all error details for debugging
+  console.error('FULL ERROR OBJECT:', error);
+  
   if (error instanceof Error) {
-    // Don't expose internal error details to users
-    return 'An error occurred while processing your request.';
+    const axiosError = error as any;
+    console.error('ERROR DETAILS:', {
+      name: error.name,
+      message: error.message,
+      hasResponse: !!axiosError.response,
+      status: axiosError.response?.status,
+      data: axiosError.response?.data,
+      stack: error.stack?.substring(0, 200)
+    });
+    
+    if (axiosError.response) {
+      return `AXIOS ERROR: Status ${axiosError.response.status} - ${axiosError.message} (${axiosError.config?.url})`;
+    }
+    return `GENERIC ERROR: ${error.name} - ${error.message}`;
   }
   
-  return 'An unexpected error occurred.';
+  return `UNKNOWN ERROR TYPE: ${typeof error} - ${String(error)}`;
 }
 
 // Async error handler wrapper

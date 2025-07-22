@@ -1,7 +1,7 @@
 // Type Mappers
 // Utilities for mapping between Motion API types and MCP types
 
-import { MotionStatus, MotionTask } from '../../api/mcp/v1-routes/models';
+import { MotionStatus, MotionTask } from '../../api/mcp/v1-routes/models/index.js';
 
 // Map simple string status to Motion status object
 export function stringToMotionStatus(status: string): MotionStatus {

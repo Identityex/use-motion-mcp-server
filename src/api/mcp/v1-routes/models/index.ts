@@ -38,3 +38,7 @@ export * from './LoadContextRequest';
 export * from './CreateDocsRequest';
 export * from './UpdateDocsRequest';
 export * from './StatusReportRequest';
+export * from './ListWorkspacesRequest';
+export * from './SetDefaultWorkspaceRequest';
+export * from './GetWorkspaceSettingsRequest';
+export * from './UpdateWorkspaceSettingsRequest';

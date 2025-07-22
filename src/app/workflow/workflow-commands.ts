@@ -1,9 +1,9 @@
 // Workflow Commands
 // Operations for workflow planning and generation
 
-import { AIService } from '../../services/ai/ai-service';
-import { MotionService } from '../../services/motion-service';
-import { CreateTaskRequest } from '../../api/mcp/v1-routes/models';
+import { AIService } from '../../services/ai/ai-service.js';
+import { MotionService } from '../../services/motion-service.js';
+import { CreateTaskRequest } from '../../api/mcp/v1-routes/models/index.js';
 
 export interface PlanWorkflowRequest {
   readonly goal: string;

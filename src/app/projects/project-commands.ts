@@ -1,14 +1,14 @@
 // Project Commands
 // Write operations for project domain
 
-import { MotionService } from '../../services/motion-service';
-import { StorageService } from '../../services/storage/storage-service';
+import { MotionService } from '../../services/motion-service.js';
+import { StorageService } from '../../services/storage/storage-service.js';
 import { 
   BindProjectRequest,
   SyncProjectRequest,
   MotionProject 
-} from '../../api/mcp/v1-routes/models';
-import { Transaction } from '../../services/utils/transaction';
+} from '../../api/mcp/v1-routes/models/index.js';
+import { Transaction } from '../../services/utils/transaction.js';
 
 export interface ProjectCommands {
   readonly bindProject: (req: BindProjectRequest) => Promise<{ projectId: string; localPath: string }>;

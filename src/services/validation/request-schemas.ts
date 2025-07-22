@@ -2,7 +2,7 @@
 // Provides comprehensive validation for all incoming requests
 
 import { z } from 'zod';
-import { validators } from './validators';
+import { validators } from './validators.js';
 
 // Project request schemas
 export const listProjectsRequestSchema = z.object({
@@ -155,3 +155,27 @@ export type LoadContextRequest = z.infer<typeof loadContextRequestSchema>;
 export type CreateDocsRequest = z.infer<typeof createDocsRequestSchema>;
 export type UpdateDocsRequest = z.infer<typeof updateDocsRequestSchema>;
 export type StatusReportRequest = z.infer<typeof statusReportRequestSchema>;
+
+// Workspace schemas
+export const listWorkspacesRequestSchema = z.object({
+  limit: z.number().min(1).max(100).default(50).optional(),
+  cursor: z.string().optional(),
+});
+
+export const setDefaultWorkspaceRequestSchema = z.object({
+  workspaceId: z.string(),
+});
+
+export const getWorkspaceSettingsRequestSchema = z.object({
+  workspaceId: z.string().optional(),
+});
+
+export const updateWorkspaceSettingsRequestSchema = z.object({
+  workspaceId: z.string(),
+  settings: z.record(z.any()).optional(),
+});
+
+export type ListWorkspacesRequest = z.infer<typeof listWorkspacesRequestSchema>;
+export type SetDefaultWorkspaceRequest = z.infer<typeof setDefaultWorkspaceRequestSchema>;
+export type GetWorkspaceSettingsRequest = z.infer<typeof getWorkspaceSettingsRequestSchema>;
+export type UpdateWorkspaceSettingsRequest = z.infer<typeof updateWorkspaceSettingsRequestSchema>;

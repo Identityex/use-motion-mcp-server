@@ -477,4 +477,71 @@ export const MCPTools: Tool[] = [
       }
     }
   },
+  {
+    name: 'motion.workspace.list',
+    description: 'List all workspaces',
+    inputSchema: {
+      type: 'object',
+      required: [],
+      properties: {
+        limit: {
+          type: 'integer',
+          description: '',
+          minimum: 1,
+          maximum: 100,
+          default: 50
+        },
+        cursor: {
+          type: 'string',
+          description: ''
+        }
+      }
+    }
+  },
+  {
+    name: 'motion.workspace.set_default',
+    description: 'Set default workspace',
+    inputSchema: {
+      type: 'object',
+      required: [],
+      properties: {
+        workspaceId: {
+          type: 'string',
+          description: ''
+        }
+      }
+    }
+  },
+  {
+    name: 'motion.workspace.get_settings',
+    description: 'Get workspace settings',
+    inputSchema: {
+      type: 'object',
+      required: [],
+      properties: {
+        workspaceId: {
+          type: 'string',
+          description: ''
+        }
+      }
+    }
+  },
+  {
+    name: 'motion.workspace.update_settings',
+    description: 'Update workspace settings',
+    inputSchema: {
+      type: 'object',
+      required: [],
+      properties: {
+        workspaceId: {
+          type: 'string',
+          description: ''
+        },
+        settings: {
+          type: 'object',
+          description: ''
+        }
+      }
+    }
+  },
 ];

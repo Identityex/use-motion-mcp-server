@@ -1,9 +1,9 @@
 // Motion Queries
 // Read operations for Motion domain
 
-import { MotionService } from '../../services/motion-service';
-import { MotionProject, MotionTask } from '../../api/mcp/v1-routes/models';
-import { motionStatusToString } from '../../services/utils/type-mappers';
+import { MotionService } from '../../services/motion-service.js';
+import { MotionProject, MotionTask } from '../../api/mcp/v1-routes/models/index.js';
+import { motionStatusToString } from '../../services/utils/type-mappers.js';
 
 export interface MotionListProjectsRequest {
   readonly workspaceId?: string;

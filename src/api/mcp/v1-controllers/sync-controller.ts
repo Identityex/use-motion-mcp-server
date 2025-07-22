@@ -1,8 +1,8 @@
 // Sync Controller
 // MCP tool handlers for Sync domain operations
 
-import { SyncCommands } from '../../../app/sync/sync-commands';
-import { SyncController } from '../v1-routes/routes/SyncControllerRoutes';
+import { SyncCommands } from '../../../app/sync/sync-commands.js';
+import { SyncController } from '../v1-routes/routes/SyncControllerRoutes.js';
 
 export function createSyncController(deps: {
   readonly app: {

@@ -1,15 +1,15 @@
 // Docs Commands
 // Operations for documentation generation and management
 
-import { AIService } from '../../services/ai/ai-service';
-import { StorageService } from '../../services/storage/storage-service';
-import { MotionService } from '../../services/motion-service';
+import { AIService } from '../../services/ai/ai-service.js';
+import { StorageService } from '../../services/storage/storage-service.js';
+import { MotionService } from '../../services/motion-service.js';
 import {
   CreateDocsRequest,
   UpdateDocsRequest,
   StatusReportRequest
-} from '../../api/mcp/v1-routes/models';
-import { motionStatusToString } from '../../services/utils/type-mappers';
+} from '../../api/mcp/v1-routes/models/index.js';
+import { motionStatusToString } from '../../services/utils/type-mappers.js';
 
 export interface DocsCommands {
   readonly createDocs: (req: CreateDocsRequest) => Promise<{

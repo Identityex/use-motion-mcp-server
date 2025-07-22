@@ -1,8 +1,8 @@
 // Context Controller
 // MCP tool handlers for Context domain operations
 
-import { ContextCommands } from '../../../app/context/context-commands';
-import { ContextController } from '../v1-routes/routes/ContextControllerRoutes';
+import { ContextCommands } from '../../../app/context/context-commands.js';
+import { ContextController } from '../v1-routes/routes/ContextControllerRoutes.js';
 
 export function createContextController(deps: {
   readonly app: {

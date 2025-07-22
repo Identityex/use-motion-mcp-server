@@ -1,7 +1,7 @@
 // Motion Service
 // Simplified service that directly uses the Motion API client
 
-import { createMotionClient, MotionClient } from './motion/client';
+import { createMotionClient, MotionClient } from './motion/client.js';
 import {
   MotionProject,
   MotionTask,
@@ -11,8 +11,8 @@ import {
   CreateProjectRequest,
   CreateTaskRequest,
   UpdateTaskRequest as MCPUpdateTaskRequest,
-} from '../types/motion-api';
-import { UpdateTaskRequest as MotionUpdateTaskRequest } from '../types/motion';
+} from '../types/motion-api.js';
+import { UpdateTaskRequest as MotionUpdateTaskRequest } from '../types/motion.js';
 
 export interface MotionServiceConfig {
   readonly apiKey: string;

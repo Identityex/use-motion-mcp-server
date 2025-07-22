@@ -108,6 +108,7 @@ Each domain has its own controller that handles MCP tool requests:
 - **SyncController**: Manages bidirectional sync and conflict resolution
 - **ContextController**: Saves and loads project context for AI assistance
 - **DocsController**: Creates and updates project documentation
+- **WorkspaceController**: Manages workspace switching and workspace-specific settings
 
 ### Local Storage Structure
 
@@ -115,6 +116,9 @@ Tasks and projects are stored locally in `.claude/motion/`:
 
 ```
 .claude/motion/
+├── workspace-settings/
+│   ├── default.json      # Default workspace configuration
+│   └── [workspace-id].json # Workspace-specific settings
 └── [project-id]/
     ├── meta.json         # Project metadata
     ├── tasks/
@@ -229,6 +233,56 @@ AI Service configuration (optional):
 - `AI_API_KEY` - API key for AI provider
 - `AI_MODEL` - Model to use (defaults: `gpt-4o-mini` for OpenAI, `claude-3-haiku-20240307` for Anthropic)
 - `AI_BASE_URL` - Custom base URL for self-hosted AI providers
+
+MCP Transport configuration:
+- `MCP_TRANSPORT` - Transport type: `stdio` or `http` (default: `stdio`)
+- `MCP_PORT` - Port for HTTP transport (default: `4000`)
+- `MCP_HOST` - Host for HTTP transport (default: `0.0.0.0`)
+
+## Connecting to the MCP Server
+
+### Local Development (stdio transport)
+
+For local development, use stdio transport:
+
+```bash
+# Run locally with stdio (default)
+npm run dev
+
+# Connect with Claude Code
+claude mcp add motion-server /path/to/motion-mcp-server/dist/server/index.js
+```
+
+### Docker Container (HTTP transport)
+
+For Docker deployments, use HTTP transport:
+
+```bash
+# Build and run with Docker
+docker build -t motion-mcp-server .
+docker run -d \
+  -p 4000:4000 \
+  -e MOTION_API_KEY=your_api_key \
+  -e MCP_TRANSPORT=http \
+  motion-mcp-server
+
+# Connect with Claude Code
+claude mcp add --transport http motion-server http://localhost:4000
+```
+
+### Environment Variables for Connection
+
+**stdio mode** (local development):
+```bash
+export MCP_TRANSPORT=stdio  # Default
+```
+
+**HTTP mode** (Docker/remote):
+```bash
+export MCP_TRANSPORT=http
+export MCP_PORT=4000        # Default port
+export MCP_HOST=0.0.0.0     # Default host
+```
 
 ## Testing Strategy
 

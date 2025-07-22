@@ -9,9 +9,9 @@ import {
   CreateTaskRequest,
   CreateCommentRequest,
   UpdateTaskRequest,
-} from '../../types/motion-api';
-import { createDomainLogger } from '../utils/logger';
-import { createRateLimitTracker } from './rate-limiter';
+} from '../../types/motion-api.js';
+import { createDomainLogger } from '../utils/logger.js';
+import { createRateLimitTracker } from './rate-limiter.js';
 
 // Initialize rate limit tracker
 const rateLimitTracker = createRateLimitTracker();
@@ -255,10 +255,24 @@ export async function createMotionClient(config: MotionClientConfig): Promise<Mo
 
     // Task operations
     async getTasks(workspaceId?: string, projectId?: string): Promise<MotionTask[]> {
+      // Debug logging for getTasks
+      logger.info('DEBUG: getTasks called', {
+        workspaceId: workspaceId ? `${workspaceId.substring(0, 8)}...` : 'undefined',
+        projectId: projectId ? `${projectId.substring(0, 8)}...` : 'undefined',
+      });
+      
       return (await queue.add(async () => {
         const params: any = {};
         if (workspaceId) params.workspaceId = workspaceId;
         if (projectId) params.projectId = projectId;
+        
+        logger.info('DEBUG: About to make getTasks request', {
+          url: '/tasks',
+          params: Object.keys(params).reduce((acc, key) => {
+            acc[key] = typeof params[key] === 'string' ? `${params[key].substring(0, 8)}...` : params[key];
+            return acc;
+          }, {} as any)
+        });
         
         const response = await pRetry(
           () => http.get<MotionTask[]>('/tasks', { params }),
@@ -270,10 +284,16 @@ export async function createMotionClient(config: MotionClientConfig): Promise<Mo
                 attempt: error.attemptNumber,
                 retriesLeft: error.retriesLeft,
                 error: error.message,
+                status: error.response?.status,
               });
             },
           }
         );
+        
+        logger.info('DEBUG: getTasks request successful', {
+          taskCount: response.data.length
+        });
+        
         return response.data;
       }))!;
     },

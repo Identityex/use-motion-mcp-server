@@ -1,10 +1,10 @@
 // Task Controller
 // MCP tool handlers for Task domain operations
 
-import { TaskCommands } from '../../../app/tasks/task-commands';
-import { TaskQueries } from '../../../app/tasks/task-queries';
-import { wrapController } from '../../../services/utils/error-handler';
-import { TaskController } from '../v1-routes/routes/TaskControllerRoutes';
+import { TaskCommands } from '../../../app/tasks/task-commands.js';
+import { TaskQueries } from '../../../app/tasks/task-queries.js';
+import { wrapController } from '../../../services/utils/error-handler.js';
+import { TaskController } from '../v1-routes/routes/TaskControllerRoutes.js';
 
 export function createTaskController(deps: {
   readonly app: {
@@ -14,18 +14,32 @@ export function createTaskController(deps: {
 }): TaskController {
   const controller: TaskController = {
     listTasks: async (req) => {
-      const tasks = await deps.app.taskQueries.listTasks(req);
-      
-      return {
-        content: [{
-          type: 'text',
-          text: JSON.stringify({
-            success: true,
-            data: tasks,
-            count: tasks.length,
-          }, null, 2),
-        }],
-      };
+      try {
+        console.log('CONTROLLER DEBUG: listTasks called with:', req);
+        const tasks = await deps.app.taskQueries.listTasks(req);
+        console.log('CONTROLLER DEBUG: Got tasks:', tasks.length);
+        
+        return {
+          content: [{
+            type: 'text',
+            text: JSON.stringify({
+              success: true,
+              data: tasks,
+              count: tasks.length,
+            }, null, 2),
+          }],
+        };
+      } catch (error) {
+        console.log('CONTROLLER DEBUG: Error in listTasks:', error);
+        
+        return {
+          content: [{
+            type: 'text',
+            text: `CONTROLLER ERROR: ${error instanceof Error ? error.message : String(error)}`,
+          }],
+          isError: true,
+        };
+      }
     },
 
     createTask: async (req) => {

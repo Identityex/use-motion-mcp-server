@@ -1,14 +1,14 @@
 // Sync Commands
 // Operations for synchronization between Motion and local storage
 
-import { MotionService } from '../../services/motion-service';
-import { StorageService } from '../../services/storage/storage-service';
+import { MotionService } from '../../services/motion-service.js';
+import { StorageService } from '../../services/storage/storage-service.js';
 import {
   SyncAllRequest,
   CheckSyncRequest
-} from '../../api/mcp/v1-routes/models';
-import { lockManager } from '../../services/utils/lock-manager';
-import { createDomainLogger } from '../../services/utils/logger';
+} from '../../api/mcp/v1-routes/models/index.js';
+import { lockManager } from '../../services/utils/lock-manager.js';
+import { createDomainLogger } from '../../services/utils/logger.js';
 
 export interface SyncCommands {
   readonly syncAll: (req: SyncAllRequest) => Promise<{

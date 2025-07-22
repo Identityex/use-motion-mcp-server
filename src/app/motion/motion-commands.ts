@@ -1,13 +1,13 @@
 // Motion Commands
 // Write operations for Motion domain
 
-import { MotionService } from '../../services/motion-service';
-import { AIService } from '../../services/ai/ai-service';
+import { MotionService } from '../../services/motion-service.js';
+import { AIService } from '../../services/ai/ai-service.js';
 import { 
   CreateProjectRequest,
   CreateTaskRequest,
   UpdateTaskRequest 
-} from '../../api/mcp/v1-routes/models';
+} from '../../api/mcp/v1-routes/models/index.js';
 
 // Motion-specific request types that extend the base MCP types
 export interface MotionCreateProjectRequest {

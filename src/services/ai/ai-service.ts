@@ -2,11 +2,11 @@
 // Integration with AI services for content enhancement and generation
 
 import { z } from 'zod';
-import { BaseAIProvider } from './providers/base-provider';
-import { AIProviderFactory, AIProviderType } from './providers/provider-factory';
-import { buildTaskPrompt, TASK_PROMPTS } from './prompts/task-prompts';
-import { buildWorkflowPrompt, WORKFLOW_PROMPTS } from './prompts/workflow-prompts';
-import { buildDocsPrompt, DOCS_PROMPTS } from './prompts/docs-prompts';
+import { BaseAIProvider } from './providers/base-provider.js';
+import { AIProviderFactory, AIProviderType } from './providers/provider-factory.js';
+import { buildTaskPrompt, TASK_PROMPTS } from './prompts/task-prompts.js';
+import { buildWorkflowPrompt, WORKFLOW_PROMPTS } from './prompts/workflow-prompts.js';
+import { buildDocsPrompt, DOCS_PROMPTS } from './prompts/docs-prompts.js';
 
 export interface AIServiceConfig {
   readonly provider?: AIProviderType;

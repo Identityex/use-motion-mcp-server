@@ -33,8 +33,8 @@ A production-ready MCP (Model Context Protocol) Server that integrates with Moti
 
 1. **Clone and Install**
 ```bash
-git clone https://github.com/your-org/motion-mcp-server.git
-cd motion-mcp-server
+git clone https://github.com/idxstudios/use-motion-mcp-server.git
+cd use-motion-mcp-server
 npm install
 ```
 
@@ -158,12 +158,21 @@ Tools and interfaces are generated from YAML schemas:
 - `motion.docs.update` - Update existing docs
 - `motion.status.report` - Generate status reports
 
+### 🏢 **Workspace Management**
+- `motion.workspace.list` - List all available workspaces
+- `motion.workspace.set_default` - Set default workspace for new projects
+- `motion.workspace.get_settings` - Get workspace-specific settings
+- `motion.workspace.update_settings` - Update workspace preferences
+
 ## Local Storage Structure
 
 The server maintains local context in `.claude/motion/`:
 
 ```
 .claude/motion/
+├── workspace-settings/
+│   ├── default.json      # Default workspace configuration
+│   └── [workspace-id].json # Workspace-specific settings
 └── [project-id]/
     ├── meta.json         # Project metadata
     ├── tasks/
@@ -191,6 +200,17 @@ Detailed task description...
 ## Acceptance Criteria
 - [ ] Criteria 1
 - [ ] Criteria 2
+```
+
+### Workspace Settings Format
+```json
+{
+  "workspaceId": "workspace_123",
+  "defaultProjectId": "project_456",
+  "defaultPriority": "MEDIUM",
+  "defaultDuration": 60,
+  "aiProvider": "openai"
+}
 ```
 
 ## Development
@@ -334,7 +354,7 @@ MIT License - see LICENSE file for details.
 
 - 📚 [Motion API Documentation](https://docs.usemotion.com/)
 - 🔧 [MCP Specification](https://spec.modelcontextprotocol.io/)
-- 🐛 [Report Issues](https://github.com/your-org/motion-mcp-server/issues)
+- 🐛 [Report Issues](https://github.com/idxstudios/use-motion-mcp-server/issues)
 
 ---
 

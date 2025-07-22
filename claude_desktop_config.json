@@ -2,14 +2,16 @@
   "mcpServers": {
     "motion": {
       "command": "node",
-      "args": ["/absolute/path/to/motion-mcp-server/dist/server/index.js"],
+      "args": ["/absolute/path/to/use-motion-mcp-server/dist/server/index.js"],
       "env": {
         "MOTION_API_KEY": "your-motion-api-key-here",
         "MOTION_IS_TEAM_ACCOUNT": "false",
         "MOTION_BASE_URL": "https://api.usemotion.com/v1",
         "REQUEST_TIMEOUT": "30000",
         "CLAUDE_DATA_DIR": "./.claude/motion",
-        "LOG_LEVEL": "info"
+        "LOG_LEVEL": "info",
+        "AI_PROVIDER": "mock",
+        "MCP_TRANSPORT": "stdio"
       }
     }
   }

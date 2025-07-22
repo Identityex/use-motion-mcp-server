@@ -1,9 +1,9 @@
 // Task Queries
 // Read operations for task domain
 
-import { MotionService } from '../../services/motion-service';
-import { StorageService } from '../../services/storage/storage-service';
-import { MotionTask } from '../../api/mcp/v1-routes/models';
+import { MotionService } from '../../services/motion-service.js';
+import { StorageService } from '../../services/storage/storage-service.js';
+import { MotionTask } from '../../api/mcp/v1-routes/models/index.js';
 
 export interface SearchTasksRequest {
   readonly query: string;

@@ -1,10 +1,10 @@
 // AI Provider Factory
 // Creates the appropriate AI provider based on configuration
 
-import { BaseAIProvider, AIProviderConfig } from './base-provider';
-import { MockAIProvider } from './mock-provider';
-import { OpenAIProvider } from './openai-provider';
-import { AnthropicProvider } from './anthropic-provider';
+import { BaseAIProvider, AIProviderConfig } from './base-provider.js';
+import { MockAIProvider } from './mock-provider.js';
+import { OpenAIProvider } from './openai-provider.js';
+import { AnthropicProvider } from './anthropic-provider.js';
 
 export type AIProviderType = 'openai' | 'anthropic' | 'mock' | 'custom';
 

@@ -1,11 +1,11 @@
 // Context Commands
 // Operations for saving and loading project context
 
-import { StorageService } from '../../services/storage/storage-service';
+import { StorageService } from '../../services/storage/storage-service.js';
 import {
   SaveContextRequest,
   LoadContextRequest
-} from '../../api/mcp/v1-routes/models';
+} from '../../api/mcp/v1-routes/models/index.js';
 
 export interface ContextCommands {
   readonly saveContext: (req: SaveContextRequest) => Promise<{

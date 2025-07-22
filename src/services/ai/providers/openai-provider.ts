@@ -4,7 +4,7 @@
 import OpenAI from 'openai';
 import { z } from 'zod';
 import { encoding_for_model, TiktokenModel } from 'tiktoken';
-import { BaseAIProvider, ChatMessage, GenerationOptions, AIProviderConfig } from './base-provider';
+import { BaseAIProvider, ChatMessage, GenerationOptions, AIProviderConfig } from './base-provider.js';
 
 export class OpenAIProvider extends BaseAIProvider {
   private client: OpenAI | null = null;

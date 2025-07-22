@@ -1,4 +1,4 @@
 // Validation module exports
 
-export * from './validators';
-export * from './request-schemas';
+export * from './validators.js';
+export * from './request-schemas.js';

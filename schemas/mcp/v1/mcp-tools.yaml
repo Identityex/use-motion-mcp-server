@@ -310,6 +310,52 @@ components:
         includeMetrics:
           type: boolean
           default: true
+    
+    ListWorkspacesRequest:
+      type: object
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+        cursor:
+          type: string
+    
+    SetDefaultWorkspaceRequest:
+      type: object
+      required:
+        - workspaceId
+      properties:
+        workspaceId:
+          type: string
+    
+    GetWorkspaceSettingsRequest:
+      type: object
+      properties:
+        workspaceId:
+          type: string
+    
+    UpdateWorkspaceSettingsRequest:
+      type: object
+      required:
+        - workspaceId
+      properties:
+        workspaceId:
+          type: string
+        settings:
+          type: object
+          properties:
+            defaultProjectId:
+              type: string
+            defaultPriority:
+              $ref: '#/components/schemas/Priority'
+            defaultDuration:
+              type: integer
+              minimum: 15
+            aiProvider:
+              type: string
+              enum: [openai, anthropic, mock]
 
 paths:
   /tools/motion.project.list:
@@ -807,6 +853,100 @@ paths:
       responses:
         '200':
           description: Status report generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPToolResponse'
+
+  /tools/motion.workspace.list:
+    post:
+      summary: List all workspaces
+      operationId: listWorkspaces
+      x-mcp-tool:
+        controller: WorkspaceController
+        action: list
+        validation:
+          required: []
+          optional: [limit, cursor]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListWorkspacesRequest'
+      responses:
+        '200':
+          description: Workspaces listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPToolResponse'
+
+  /tools/motion.workspace.set_default:
+    post:
+      summary: Set default workspace
+      operationId: setDefaultWorkspace
+      x-mcp-tool:
+        controller: WorkspaceController
+        action: setDefault
+        validation:
+          required: [workspaceId]
+          optional: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetDefaultWorkspaceRequest'
+      responses:
+        '200':
+          description: Default workspace set successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPToolResponse'
+
+  /tools/motion.workspace.get_settings:
+    post:
+      summary: Get workspace settings
+      operationId: getWorkspaceSettings
+      x-mcp-tool:
+        controller: WorkspaceController
+        action: getSettings
+        validation:
+          required: []
+          optional: [workspaceId]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetWorkspaceSettingsRequest'
+      responses:
+        '200':
+          description: Workspace settings retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MCPToolResponse'
+
+  /tools/motion.workspace.update_settings:
+    post:
+      summary: Update workspace settings
+      operationId: updateWorkspaceSettings
+      x-mcp-tool:
+        controller: WorkspaceController
+        action: updateSettings
+        validation:
+          required: [workspaceId]
+          optional: [settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWorkspaceSettingsRequest'
+      responses:
+        '200':
+          description: Workspace settings updated successfully
           content:
             application/json:
               schema:

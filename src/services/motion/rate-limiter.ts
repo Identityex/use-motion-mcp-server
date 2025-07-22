@@ -1,7 +1,7 @@
 // Rate limit tracking and monitoring
 // Provides insights into API usage and rate limit status
 
-import { createDomainLogger } from '../utils/logger';
+import { createDomainLogger } from '../utils/logger.js';
 
 export interface RateLimitInfo {
   limit: number;

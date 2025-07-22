@@ -1,8 +1,8 @@
 // Workflow Controller
 // MCP tool handlers for Workflow domain operations
 
-import { WorkflowCommands } from '../../../app/workflow/workflow-commands';
-import { WorkflowController } from '../v1-routes/routes/WorkflowControllerRoutes';
+import { WorkflowCommands } from '../../../app/workflow/workflow-commands.js';
+import { WorkflowController } from '../v1-routes/routes/WorkflowControllerRoutes.js';
 
 export function createWorkflowController(deps: {
   readonly app: {

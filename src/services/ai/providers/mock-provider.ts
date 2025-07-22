@@ -2,7 +2,7 @@
 // Provides mock implementations for testing and when AI is disabled
 
 import { z } from 'zod';
-import { BaseAIProvider, ChatMessage, GenerationOptions, AIProviderConfig } from './base-provider';
+import { BaseAIProvider, ChatMessage, GenerationOptions, AIProviderConfig } from './base-provider.js';
 
 export class MockAIProvider extends BaseAIProvider {
   constructor(config: AIProviderConfig) {

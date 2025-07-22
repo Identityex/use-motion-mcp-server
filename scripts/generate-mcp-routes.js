@@ -165,7 +165,7 @@ Object.entries(api.paths || {}).forEach(([path, methods]) => {
         }
       }
       
-      // Extract tool name from path (e.g., /tools/motion.project.list -> motion.project.list)
+      // Extract tool name from path (e.g., /tools/motion_project_list -> motion_project_list)
       const toolName = path.replace('/tools/', '');
       
       controllers[controllerName].operations.push({

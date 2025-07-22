@@ -1,11 +1,11 @@
 // Task Commands
 // Write operations for task domain
 
-import { MotionService } from '../../services/motion-service';
-import { CreateTaskRequest } from '../../api/mcp/v1-routes/models';
-import { AIService } from '../../services/ai/ai-service';
-import { StorageService } from '../../services/storage/storage-service';
-import { lockManager } from '../../services/utils/lock-manager';
+import { MotionService } from '../../services/motion-service.js';
+import { CreateTaskRequest } from '../../api/mcp/v1-routes/models/index.js';
+import { AIService } from '../../services/ai/ai-service.js';
+import { StorageService } from '../../services/storage/storage-service.js';
+import { lockManager } from '../../services/utils/lock-manager.js';
 import {
   BatchCreateTasksRequest,
   CompleteTaskRequest,
@@ -14,9 +14,9 @@ import {
   AnalyzeTaskRequest,
   SearchTasksRequest,
   MotionTask
-} from '../../api/mcp/v1-routes/models';
-import { motionStatusToString } from '../../services/utils/type-mappers';
-import { Transaction } from '../../services/utils/transaction';
+} from '../../api/mcp/v1-routes/models/index.js';
+import { motionStatusToString } from '../../services/utils/type-mappers.js';
+import { Transaction } from '../../services/utils/transaction.js';
 
 export interface UpdateTaskRequest {
   readonly taskId: string;

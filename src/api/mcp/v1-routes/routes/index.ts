@@ -4,3 +4,4 @@ export * from './WorkflowControllerRoutes';
 export * from './SyncControllerRoutes';
 export * from './ContextControllerRoutes';
 export * from './DocsControllerRoutes';
+export * from './WorkspaceControllerRoutes';
